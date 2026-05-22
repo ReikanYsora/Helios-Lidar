@@ -35,7 +35,7 @@ import pyproj
 from osgeo import gdal, osr
 from scipy.spatial import cKDTree
 
-from pipeline.dsm_to_ndsm import NDSM_NODATA
+from pipeline.dsm_to_ndsm import DTM_NODATA, NDSM_NODATA
 from pipeline.validate import ValidationError
 
 #ASPRS Standard LIDAR Point Classes, ground returns are class 2.
@@ -296,24 +296,61 @@ def rasterise(
     col = np.clip(((x - min_x_snap) / pixel_meters).astype(np.int64), 0, width - 1)
     row = np.clip(((max_y_snap - y) / pixel_meters).astype(np.int64), 0, height - 1)
 
-    #Per-cell max-Z aggregation. np.maximum.at is the accumulator-
-    #style ufunc for "take the per-cell max over a sequence of
-    #unordered writes"; ~ O(points) and avoids a Python loop.
+    #Band 1: per-cell max height-above-ground. np.maximum.at is the
+    #accumulator-style ufunc for "take the per-cell max over a
+    #sequence of unordered writes"; O(points) and avoids a Python
+    #loop. Any cell that never saw a point stays at NDSM_NODATA.
     report("rasterising", 0.0)
-    raster = np.full((height, width), NDSM_NODATA, dtype=np.float32)
-    np.maximum.at(raster, (row, col), hag)
-    #Any cell that never saw a point stays at NDSM_NODATA.
+    ndsm = np.full((height, width), NDSM_NODATA, dtype=np.float32)
+    np.maximum.at(ndsm, (row, col), hag)
+
+    #Band 2: per-cell ground elevation, computed from the ground-
+    #classified points only (ASPRS class 2). Mean Z of the ground
+    #returns is the standard PDAL-style DTM definition and matches
+    #what the DSM/DTM raster-pair workflow already supplies on
+    #band 2. The card needs this to ray-march obstacles through
+    #sloped ground correctly: a building 50 m east of the home with
+    #the terrain dropping 8 m on the way no longer reads as a 5 m
+    #obstacle but as a -3 m one, i.e. below the panel and invisible
+    #to the sun ray.
+    #
+    #Cells that contain no ground return fall back to the KDTree
+    #ground estimate built earlier for the nDSM subtraction, so the
+    #DTM stays dense even where the ground point cloud is sparse.
+    #Cells with no points at all stay at DTM_NODATA.
+    ground_col_idx = col[ground_mask]
+    ground_row_idx = row[ground_mask]
+    ground_z_pts   = z[ground_mask]
+    dtm_sum   = np.zeros((height, width), dtype=np.float64)
+    dtm_count = np.zeros((height, width), dtype=np.int32)
+    np.add.at(dtm_sum,   (ground_row_idx, ground_col_idx), ground_z_pts)
+    np.add.at(dtm_count, (ground_row_idx, ground_col_idx), 1)
+    dtm = np.full((height, width), DTM_NODATA, dtype=np.float32)
+    has_ground = dtm_count > 0
+    dtm[has_ground] = (dtm_sum[has_ground] / dtm_count[has_ground]).astype(np.float32)
+    if not has_ground.all():
+        #Fill ground-empty cells with the KDTree-derived ground Z
+        #(same value the nDSM subtraction uses for each non-ground
+        #point). Adding everything in then masking back to "only
+        #empty cells" keeps the code allocation-free.
+        np.add.at(dtm_sum,   (row, col), ground_z_per_point)
+        np.add.at(dtm_count, (row, col), 1)
+        blended = (~has_ground) & (dtm_count > 0)
+        dtm[blended] = (dtm_sum[blended] / dtm_count[blended]).astype(np.float32)
     report("rasterising", 1.0)
 
-    #Write as a Float32 GeoTIFF with the right projection so the
-    #downstream cog step + the Helios bbox lookup work unchanged.
+    #Write as a 2-band Float32 GeoTIFF with the right projection so
+    #the downstream COG step + the Helios bbox lookup work
+    #unchanged. Band 1 is the nDSM (height above local ground),
+    #band 2 is the DTM (ground elevation in the source vertical
+    #datum).
     report("writing", 0.0)
     driver = gdal.GetDriverByName("GTiff")
     out_ds = driver.Create(
         str(output_path),
         xsize=width,
         ysize=height,
-        bands=1,
+        bands=2,
         eType=gdal.GDT_Float32,
         options=["COMPRESS=DEFLATE", "TILED=YES", "BIGTIFF=IF_SAFER"],
     )
@@ -331,10 +368,18 @@ def rasterise(
     srs.ImportFromWkt(target_crs.to_wkt())
     out_ds.SetProjection(srs.ExportToWkt())
 
-    band = out_ds.GetRasterBand(1)
-    band.SetNoDataValue(NDSM_NODATA)
-    band.WriteArray(raster)
-    band.FlushCache()
+    band1 = out_ds.GetRasterBand(1)
+    band1.SetNoDataValue(NDSM_NODATA)
+    band1.SetDescription("nDSM (height above local ground, metres)")
+    band1.WriteArray(ndsm)
+    band1.FlushCache()
+
+    band2 = out_ds.GetRasterBand(2)
+    band2.SetNoDataValue(DTM_NODATA)
+    band2.SetDescription("DTM (ground elevation, source vertical datum, metres)")
+    band2.WriteArray(dtm)
+    band2.FlushCache()
+
     out_ds.FlushCache()
     out_ds = None
     report("writing", 1.0)
