@@ -47,7 +47,6 @@ export const TRANSLATIONS = {
         aboutLead: 'Helios is a Lovelace card for Home Assistant that paints live solar conditions on a 3D map of your home: the sun arc, cloud cover, real cast shadows from buildings and trees, an optional PV production overlay with a self-learning forecast, and a scrubbable 5-day timeline. This site exists to give that card the LiDAR data it needs in regions where the built-in providers do not reach yet.',
         communityInstalls: 'Helios cards running on dashboards right now',
         communityConversions: 'LiDAR conversions processed through this pipeline',
-        aboutDemoLink: 'Try the Helios card live &rarr;',
         aboutLink: 'Learn more about the Helios card &rarr;',
         primerH2: 'First time here? Read this.',
         primerLead: 'Helios paints shadows from real buildings and trees around your home. To do that it needs a small file describing how tall every building and tree is. This page turns raw LiDAR data (which comes in formats Helios cannot read directly) into that file.',
@@ -111,10 +110,6 @@ export const TRANSLATIONS = {
         heliosCardLoading: 'Loading the latest Helios README from GitHub...',
         heliosCardError: 'Could not load the Helios README right now. Try again in a minute, or visit the repository directly:',
         heliosCardBack: '&larr; Back to Helios-Lidar',
-        demoH1: 'Helios card live demo',
-        demoLede: 'The real Helios card running here, on this page, with synthetic PV production and battery sensors and a fictional home location. No Home Assistant instance behind it, just the actual card bundle fed a mocked <code>hass</code> object.',
-        demoLoading: 'Loading the Helios card bundle...',
-        demoNote: 'The PV chip and battery readings tick every few seconds against a synthetic clear-sky curve so the card never looks static. The map tiles come from OpenFreeMap and the weather data from Open-Meteo, exactly as the card does on a real install. Toggle the LiDAR overlay on the top-left to see the real aerial point cloud Helios renders on top of the buildings. The bottom timeline is hidden in demo mode, on a real Home Assistant install it spans 5 days and you can drag it to scrub through time.',
     },
 
     fr: {
@@ -124,7 +119,6 @@ export const TRANSLATIONS = {
         aboutLead: 'Helios est une carte Lovelace pour Home Assistant qui affiche en direct les conditions solaires sur une carte 3D de votre domicile : l’arc du soleil, la couverture nuageuse, les ombres portées réelles des bâtiments et des arbres, une superposition optionnelle de la production PV avec une prévision auto-apprenante, et une timeline glissante sur 5 jours. Ce site fournit à cette carte les données LiDAR dont elle a besoin dans les régions où les fournisseurs intégrés ne couvrent pas encore.',
         communityInstalls: 'cartes Helios actives sur des tableaux de bord en ce moment',
         communityConversions: 'conversions LiDAR traitées par ce pipeline',
-        aboutDemoLink: 'Essayer la carte Helios en direct &rarr;',
         aboutLink: 'En savoir plus sur la carte Helios &rarr;',
         primerH2: 'Première visite ? Lisez ceci.',
         primerLead: 'Helios affiche les ombres réelles des bâtiments et des arbres autour de chez vous. Pour cela il lui faut un fichier décrivant la hauteur de chaque bâtiment et de chaque arbre. Cette page convertit vos données LiDAR brutes (dans des formats qu’Helios ne lit pas directement) en ce fichier.',
@@ -188,10 +182,6 @@ export const TRANSLATIONS = {
         heliosCardLoading: 'Chargement du README Helios depuis GitHub...',
         heliosCardError: 'Impossible de charger le README Helios pour le moment. Réessayez dans une minute, ou consultez directement le dépôt :',
         heliosCardBack: '&larr; Retour à Helios-Lidar',
-        demoH1: 'Démo en direct de la carte Helios',
-        demoLede: 'La vraie carte Helios qui tourne ici, sur cette page, avec des capteurs synthétiques de production PV et de batterie et un domicile fictif. Pas d’instance Home Assistant derrière, juste le bundle de la carte alimenté par un objet <code>hass</code> simulé.',
-        demoLoading: 'Chargement du bundle de la carte Helios...',
-        demoNote: 'Les valeurs de la pastille PV et de la batterie sont rafraîchies toutes les quelques secondes selon une courbe ciel-clair synthétique pour que la carte ne paraisse jamais figée. Les tuiles de la carte viennent d’OpenFreeMap et la météo d’Open-Meteo, exactement comme sur une vraie installation. Activez le bouton LiDAR en haut à gauche pour voir le nuage de points aérien que Helios superpose aux bâtiments. La timeline en bas est masquée en mode démo ; sur une vraie installation Home Assistant elle couvre 5 jours et se fait glisser pour balayer le temps.',
     },
 
     de: {
@@ -199,7 +189,6 @@ export const TRANSLATIONS = {
         lede: 'Von Ihren rohen LiDAR-Daten zur nDSM-Datei, die die <a href="/helios-card">Helios-Karte</a> braucht, samt YAML-Block zum Einfügen in Ihre Konfiguration.',
         aboutH2: 'Über die Helios-Karte',
         aboutLead: 'Helios ist eine Lovelace-Karte für Home Assistant, die die aktuellen Sonnenbedingungen live auf einer 3D-Karte Ihres Zuhauses anzeigt: den Sonnenbogen, die Wolkendecke, echte Schlagschatten von Gebäuden und Bäumen, eine optionale PV-Produktionsanzeige mit selbstlernender Vorhersage und eine scrollbare 5-Tage-Zeitleiste. Diese Seite liefert dieser Karte die LiDAR-Daten, die sie in Regionen braucht, in denen die eingebauten Provider noch nicht greifen.',
-        aboutDemoLink: 'Die Helios-Karte live ausprobieren &rarr;',
         aboutLink: 'Mehr über die Helios-Karte &rarr;',
         communityInstalls: 'Helios-Karten laufen gerade auf Dashboards',
         communityConversions: 'LiDAR-Konvertierungen über diese Pipeline verarbeitet',
@@ -265,10 +254,6 @@ export const TRANSLATIONS = {
         heliosCardLoading: 'Lade das Helios-README von GitHub...',
         heliosCardError: 'Das Helios-README kann derzeit nicht geladen werden. Bitte versuchen Sie es in einer Minute erneut oder besuchen Sie das Repository direkt:',
         heliosCardBack: '&larr; Zurück zu Helios-Lidar',
-        demoH1: 'Helios-Karte Live-Demo',
-        demoLede: 'Die echte Helios-Karte läuft hier auf dieser Seite, mit synthetischen PV- und Batterie-Sensoren und einem fiktiven Zuhause. Keine Home-Assistant-Instanz dahinter, nur das eigentliche Karten-Bundle, das mit einem simulierten <code>hass</code>-Objekt versorgt wird.',
-        demoLoading: 'Lade das Helios-Karten-Bundle...',
-        demoNote: 'Die PV-Anzeige und die Batteriewerte werden alle paar Sekunden anhand einer synthetischen Klarhimmel-Kurve aktualisiert, damit die Karte nie statisch wirkt. Karten-Kacheln stammen von OpenFreeMap und die Wetterdaten von Open-Meteo, genau wie auf einer echten Installation. Aktivieren Sie den LiDAR-Schalter oben links, um die echte aerische Punktwolke zu sehen, die Helios über die Gebäude legt. Die Zeitleiste am unteren Rand ist im Demo-Modus ausgeblendet, auf einer echten Home-Assistant-Installation deckt sie 5 Tage ab und lässt sich zum Zeitscrubben ziehen.',
     },
 
     es: {
@@ -276,7 +261,6 @@ export const TRANSLATIONS = {
         lede: 'De tus datos LiDAR en bruto al archivo nDSM que la <a href="/helios-card">tarjeta Helios</a> necesita, con el bloque YAML para pegar en tu configuración.',
         aboutH2: 'Sobre la tarjeta Helios',
         aboutLead: 'Helios es una tarjeta Lovelace para Home Assistant que muestra en vivo las condiciones solares sobre un mapa 3D de tu casa: el arco del sol, la cobertura nubosa, las sombras reales de edificios y árboles, una superposición opcional de producción FV con previsión autoaprendida, y una línea de tiempo de 5 días navegable. Este sitio aporta a esa tarjeta los datos LiDAR que necesita en las regiones donde los proveedores integrados aún no llegan.',
-        aboutDemoLink: 'Prueba la tarjeta Helios en vivo &rarr;',
         aboutLink: 'Saber más sobre la tarjeta Helios &rarr;',
         communityInstalls: 'tarjetas Helios activas en paneles ahora mismo',
         communityConversions: 'conversiones LiDAR procesadas por este pipeline',
@@ -342,10 +326,6 @@ export const TRANSLATIONS = {
         heliosCardLoading: 'Cargando el README de Helios desde GitHub...',
         heliosCardError: 'No se puede cargar el README de Helios ahora mismo. Vuelve a intentarlo en un minuto, o visita el repositorio directamente:',
         heliosCardBack: '&larr; Volver a Helios-Lidar',
-        demoH1: 'Demostración en vivo de la tarjeta Helios',
-        demoLede: 'La tarjeta Helios real se ejecuta aquí, en esta página, con sensores sintéticos de producción FV y de batería y una ubicación de hogar ficticia. Sin instancia de Home Assistant detrás, solo el bundle real de la tarjeta alimentado con un objeto <code>hass</code> simulado.',
-        demoLoading: 'Cargando el bundle de la tarjeta Helios...',
-        demoNote: 'Los valores del chip FV y de la batería se actualizan cada pocos segundos siguiendo una curva sintética de cielo despejado, para que la tarjeta nunca parezca estática. Las teselas del mapa vienen de OpenFreeMap y los datos meteorológicos de Open-Meteo, exactamente como en una instalación real. Activa el interruptor LiDAR en la parte superior izquierda para ver la nube de puntos aérea real que Helios superpone a los edificios. La línea de tiempo inferior está oculta en modo demo; en una instalación Home Assistant real abarca 5 días y se arrastra para recorrer el tiempo.',
     },
 
     pt: {
@@ -353,7 +333,6 @@ export const TRANSLATIONS = {
         lede: 'Dos seus dados LiDAR em bruto ao ficheiro nDSM de que o <a href="/helios-card">cartão Helios</a> precisa, com o bloco YAML para colar na sua configuração.',
         aboutH2: 'Sobre o cartão Helios',
         aboutLead: 'O Helios é um cartão Lovelace para o Home Assistant que mostra em direto as condições solares num mapa 3D da sua casa: o arco do sol, a cobertura de nuvens, as sombras reais de edifícios e árvores, uma sobreposição opcional de produção FV com previsão autoaprendida, e uma linha do tempo navegável de 5 dias. Este site fornece a esse cartão os dados LiDAR de que precisa nas regiões onde os fornecedores integrados ainda não chegam.',
-        aboutDemoLink: 'Experimente o cartão Helios em direto &rarr;',
         aboutLink: 'Saber mais sobre o cartão Helios &rarr;',
         communityInstalls: 'cartões Helios ativos em painéis agora mesmo',
         communityConversions: 'conversões LiDAR processadas por este pipeline',
@@ -419,10 +398,6 @@ export const TRANSLATIONS = {
         heliosCardLoading: 'A carregar o README do Helios a partir do GitHub...',
         heliosCardError: 'Não é possível carregar o README do Helios neste momento. Tente novamente daqui a um minuto, ou visite o repositório diretamente:',
         heliosCardBack: '&larr; Voltar a Helios-Lidar',
-        demoH1: 'Demonstração em direto do cartão Helios',
-        demoLede: 'O verdadeiro cartão Helios a correr aqui, nesta página, com sensores sintéticos de produção FV e de bateria e uma localização de casa fictícia. Sem instância Home Assistant por trás, apenas o bundle real do cartão alimentado com um objeto <code>hass</code> simulado.',
-        demoLoading: 'A carregar o bundle do cartão Helios...',
-        demoNote: 'Os valores do chip FV e da bateria atualizam-se a cada poucos segundos segundo uma curva sintética de céu limpo, para que o cartão nunca pareça parado. Os mosaicos do mapa vêm do OpenFreeMap e os dados meteorológicos do Open-Meteo, exatamente como numa instalação real. Ative o botão LiDAR no canto superior esquerdo para ver a nuvem de pontos aérea real que o Helios sobrepõe aos edifícios. A linha do tempo inferior está oculta no modo demo; numa instalação Home Assistant real cobre 5 dias e arrasta-se para percorrer o tempo.',
     },
 
     it: {
@@ -430,7 +405,6 @@ export const TRANSLATIONS = {
         lede: 'Dai tuoi dati LiDAR grezzi al file nDSM di cui la <a href="/helios-card">card Helios</a> ha bisogno, con il blocco YAML da incollare nella tua configurazione.',
         aboutH2: 'Sulla card Helios',
         aboutLead: 'Helios è una card Lovelace per Home Assistant che mostra in tempo reale le condizioni solari su una mappa 3D di casa tua: l’arco del sole, la copertura nuvolosa, le ombre reali proiettate da edifici e alberi, un overlay opzionale di produzione FV con previsione auto-apprendente, e una timeline scorrevole di 5 giorni. Questo sito fornisce a quella card i dati LiDAR di cui ha bisogno nelle regioni dove i provider integrati non arrivano ancora.',
-        aboutDemoLink: 'Prova la card Helios in diretta &rarr;',
         aboutLink: 'Scopri di più sulla card Helios &rarr;',
         communityInstalls: 'card Helios attive nelle dashboard in questo momento',
         communityConversions: 'conversioni LiDAR elaborate da questa pipeline',
@@ -496,10 +470,6 @@ export const TRANSLATIONS = {
         heliosCardLoading: 'Caricamento del README di Helios da GitHub...',
         heliosCardError: 'Non è possibile caricare il README di Helios in questo momento. Riprova tra un minuto, oppure visita direttamente il repository:',
         heliosCardBack: '&larr; Torna a Helios-Lidar',
-        demoH1: 'Demo in diretta della card Helios',
-        demoLede: 'La vera card Helios in esecuzione qui, su questa pagina, con sensori sintetici di produzione FV e di batteria e una posizione di casa fittizia. Nessuna istanza Home Assistant dietro, solo il bundle reale della card alimentato con un oggetto <code>hass</code> simulato.',
-        demoLoading: 'Caricamento del bundle della card Helios...',
-        demoNote: 'I valori del chip FV e della batteria si aggiornano ogni pochi secondi seguendo una curva sintetica a cielo sereno, perché la card non sembri mai statica. Le tessere della mappa arrivano da OpenFreeMap e i dati meteo da Open-Meteo, esattamente come in un’installazione reale. Attiva l’interruttore LiDAR in alto a sinistra per vedere la nuvola di punti aerea reale che Helios sovrappone agli edifici. La timeline in basso è nascosta nella modalità demo; in un’installazione Home Assistant reale copre 5 giorni e si trascina per scorrere il tempo.',
     },
 
     nl: {
@@ -507,7 +477,6 @@ export const TRANSLATIONS = {
         lede: 'Van je ruwe LiDAR-data naar het nDSM-bestand dat de <a href="/helios-card">Helios-kaart</a> nodig heeft, met het YAML-blok om in je configuratie te plakken.',
         aboutH2: 'Over de Helios-kaart',
         aboutLead: 'Helios is een Lovelace-kaart voor Home Assistant die de actuele zonomstandigheden live op een 3D-kaart van je huis weergeeft: de zonneboog, bewolking, echte slagschaduwen van gebouwen en bomen, een optionele PV-productieoverlay met een zelflerende voorspelling, en een 5-daagse tijdlijn die je kunt scrubben. Deze site levert die kaart de LiDAR-data die ze nodig heeft in regio’s waar de ingebouwde providers nog niet komen.',
-        aboutDemoLink: 'Probeer de Helios-kaart live &rarr;',
         aboutLink: 'Meer over de Helios-kaart &rarr;',
         communityInstalls: 'Helios-kaarten actief op dashboards op dit moment',
         communityConversions: 'LiDAR-conversies via deze pipeline verwerkt',
@@ -573,10 +542,6 @@ export const TRANSLATIONS = {
         heliosCardLoading: 'README van Helios laden vanaf GitHub...',
         heliosCardError: 'De README van Helios kan nu niet worden geladen. Probeer het over een minuut opnieuw, of bezoek de repository rechtstreeks:',
         heliosCardBack: '&larr; Terug naar Helios-Lidar',
-        demoH1: 'Helios-kaart live demo',
-        demoLede: 'De echte Helios-kaart draait hier, op deze pagina, met synthetische PV-productie- en batterijsensoren en een fictieve thuislocatie. Geen Home Assistant-instantie erachter, alleen de echte kaart-bundle gevoed met een gesimuleerd <code>hass</code>-object.',
-        demoLoading: 'Helios-kaart bundle laden...',
-        demoNote: 'De PV-chip- en batterijwaarden tikken om de paar seconden volgens een synthetische heldere-hemelcurve zodat de kaart nooit statisch oogt. Kaarttegels komen van OpenFreeMap en de weergegevens van Open-Meteo, precies zoals op een echte installatie. Activeer de LiDAR-knop linksboven om de echte aerische puntenwolk te zien die Helios over de gebouwen legt. De tijdlijn onderaan is verborgen in de demomodus; op een echte Home Assistant-installatie omspant ze 5 dagen en sleep je hem om door de tijd te scrubben.',
     },
 
     no: {
@@ -584,7 +549,6 @@ export const TRANSLATIONS = {
         lede: 'Fra de rå LiDAR-dataene dine til nDSM-filen <a href="/helios-card">Helios-kortet</a> trenger, med YAML-blokken som limes inn i konfigurasjonen din.',
         aboutH2: 'Om Helios-kortet',
         aboutLead: 'Helios er et Lovelace-kort for Home Assistant som viser solforholdene live på et 3D-kart over hjemmet ditt: solbuen, skydekke, ekte slagskygger fra bygninger og trær, et valgfritt PV-produksjonslag med en selvlærende prognose, og en 5-dagers tidslinje du kan skrubbe. Dette nettstedet gir det kortet LiDAR-dataene det trenger i regioner der de innebygde leverandørene ikke når ennå.',
-        aboutDemoLink: 'Prøv Helios-kortet live &rarr;',
         aboutLink: 'Lær mer om Helios-kortet &rarr;',
         communityInstalls: 'Helios-kort kjører på dashbord akkurat nå',
         communityConversions: 'LiDAR-konverteringer behandlet via denne pipelinen',
@@ -650,10 +614,6 @@ export const TRANSLATIONS = {
         heliosCardLoading: 'Laster Helios-README fra GitHub...',
         heliosCardError: 'Helios-README kan ikke lastes akkurat nå. Prøv igjen om et minutt, eller besøk depotet direkte:',
         heliosCardBack: '&larr; Tilbake til Helios-Lidar',
-        demoH1: 'Helios-kort live demo',
-        demoLede: 'Det ekte Helios-kortet kjører her, på denne siden, med syntetiske PV-produksjons- og batterisensorer og en fiktiv hjemmeplassering. Ingen Home Assistant-instans bak, bare det faktiske kort-bundlet matet med et simulert <code>hass</code>-objekt.',
-        demoLoading: 'Laster Helios-kort-bundle...',
-        demoNote: 'PV-brikken og batteriavlesningene tikker hvert par sekunder mot en syntetisk klar-himmel-kurve slik at kortet aldri ser statisk ut. Kart-flisene kommer fra OpenFreeMap og værdataene fra Open-Meteo, akkurat som på en ekte installasjon. Aktiver LiDAR-bryteren oppe til venstre for å se den ekte aerial-punktskyen Helios legger over bygningene. Tidslinjen nederst er skjult i demomodus; på en ekte Home Assistant-installasjon dekker den 5 dager og dras for å skrubbe gjennom tid.',
     },
 };
 

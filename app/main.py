@@ -166,18 +166,6 @@ def helios_card_page() -> FileResponse:
     return FileResponse(page, media_type="text/html; charset=utf-8")
 
 
-@app.get("/demo")
-def demo_page() -> FileResponse:
-    """Serve the interactive Helios card demo page. Loads the real
-    Helios bundle from jsdelivr (pinned to the matching release tag)
-    and hands it a stub Home Assistant object populated with synthetic
-    PV / battery entities so the card renders end-to-end without an
-    actual HA instance behind it.
-    """
-    page = FRONTEND_DIR / "demo.html"
-    return FileResponse(page, media_type="text/html; charset=utf-8")
-
-
 @app.get("/api/lidar-sources")
 def api_lidar_sources() -> JSONResponse:
     """Return the rendered LIDAR_SOURCES.md as HTML. Source of truth

@@ -43,6 +43,13 @@
         timeline. This site exists to give that card the LiDAR data it
         needs in regions where the built-in providers don't reach yet.
       </p>
+      <!--  Live demo of the real Helios card running against a
+            mocked Home Assistant `hass` object. Replaces the
+            previous trailer video + screenshot gallery: visitors
+            can drag / pinch / scrub the actual card directly
+            instead of watching a recording. demo-mount.js (loaded
+            via app.js) appends a <helios-card> to this slot.    -->
+      <div class="about-demo-wrap" id="demo-card-wrap"></div>
       <!--  Community signals. Two anonymous counters fed by the
             VPS: distinct Helios card installs that pinged in the
             last 30 days, and the all-time count of successful
@@ -62,26 +69,6 @@
             LiDAR conversions processed through this pipeline
           </span>
         </div>
-      </div>
-      <div class="about-trailer">
-        <video
-          controls
-          playsinline
-          preload="metadata"
-          poster="https://raw.githubusercontent.com/ReikanYsora/Helios/main/images/preview_01.png">
-          <source src="https://raw.githubusercontent.com/ReikanYsora/Helios/main/images/helios-1.6.0.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="about-gallery">
-        <a href="https://raw.githubusercontent.com/ReikanYsora/Helios/main/images/preview_01.png" target="_blank" rel="noopener">
-          <img src="https://raw.githubusercontent.com/ReikanYsora/Helios/main/images/preview_01.png" alt="Helios card preview 1" loading="lazy">
-        </a>
-        <a href="https://raw.githubusercontent.com/ReikanYsora/Helios/main/images/preview_02.png" target="_blank" rel="noopener">
-          <img src="https://raw.githubusercontent.com/ReikanYsora/Helios/main/images/preview_02.png" alt="Helios card preview 2" loading="lazy">
-        </a>
-        <a href="https://raw.githubusercontent.com/ReikanYsora/Helios/main/images/preview_03.png" target="_blank" rel="noopener">
-          <img src="https://raw.githubusercontent.com/ReikanYsora/Helios/main/images/preview_03.png" alt="Helios card preview 3" loading="lazy">
-        </a>
       </div>
       <p class="about-link-row">
         <a href="/helios-card" class="about-link" data-i18n="aboutLink">Learn more about the Helios card &rarr;</a>

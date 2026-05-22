@@ -7,7 +7,14 @@
 //countdown to the COG deletion is driven by job.cog_expires_at, a
 //Unix timestamp the server commits when the job lands done.
 
+//Register the HA custom-element shims (<ha-card>, <ha-icon>)
+//BEFORE the Helios bundle gets a chance to construct anything via
+//the embedded demo (mountHeliosDemo() below). No-op when somehow
+//run inside a real Home Assistant.
+import '/static/ha-shims.js';
+
 import { mountViewer } from '/static/viewer.js';
+import { mountHeliosDemo } from '/static/demo-mount.js';
 import {
     SUPPORTED_LANGS,
     LANG_FLAGS,
@@ -119,6 +126,22 @@ function switchLang(lang)
     //"no file selected" in the previous locale; reapply now so the
     //translated placeholder shows up instead of the stale one.
     refreshFilenameSlots();
+    //Forward the locale change to the embedded Helios card so its
+    //own i18n tree picks up the new language for chip labels +
+    //tooltip strings.
+    if (heliosDemoHandle) heliosDemoHandle.setLanguage(lang);
+}
+
+//Mount the embedded Helios card inside the About section, right
+//above the community counters. Replaces the static trailer +
+//screenshot gallery the page used to ship. Skipped silently if
+//the host slot isn't on the page (defensive : the same app.js
+//might be reused on a different layout later).
+let heliosDemoHandle = null;
+const demoWrap = document.getElementById('demo-card-wrap');
+if (demoWrap)
+{
+    heliosDemoHandle = mountHeliosDemo({ hostEl: demoWrap, initialLang: activeLang });
 }
 
 function tFilename(input)
