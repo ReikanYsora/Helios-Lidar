@@ -490,3 +490,49 @@ function sleep(ms)
 {
     return new Promise((r) => setTimeout(r, ms));
 }
+
+
+//Community-counter loader. Two anonymous totals fed by the VPS:
+//distinct Helios card installs that pinged in the last 30 days,
+//and the all-time count of successful pipeline conversions. The
+//HTML reserves the slot with a "," placeholder; we swap in the
+//real value once the fetch returns. A failure is silent: the
+//placeholder stays + we don't surface an error to the user, the
+//counters are a flavour element, not a critical UI piece.
+async function loadCommunityStats()
+{
+    const fmt = (n) =>
+    {
+        if (!Number.isFinite(n)) return ',';
+        //Locale-aware grouping (1 234 in fr, 1,234 in en, ...).
+        try { return n.toLocaleString(); }
+        catch (_) { return String(n); }
+    };
+    const setStat = (key, value) =>
+    {
+        const el = document.querySelector('[data-stat="' + key + '"]');
+        if (el) el.textContent = fmt(value);
+    };
+    try
+    {
+        const [installsResp, conversionsResp] = await Promise.all([
+            fetch('/api/install-count',     { credentials: 'omit' }),
+            fetch('/api/conversions-count', { credentials: 'omit' }),
+        ]);
+        if (installsResp.ok)
+        {
+            const data = await installsResp.json();
+            setStat('installs', data.count);
+        }
+        if (conversionsResp.ok)
+        {
+            const data = await conversionsResp.json();
+            setStat('conversions', data.count);
+        }
+    }
+    catch (_) { /* silent: counters are flavour, not critical */ }
+}
+
+//Fire as soon as the DOM is parsed. The fetch piggy-backs on the
+//main script's module-load, no extra HTTP round-trip.
+loadCommunityStats();

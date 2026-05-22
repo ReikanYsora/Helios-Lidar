@@ -43,6 +43,26 @@
         timeline. This site exists to give that card the LiDAR data it
         needs in regions where the built-in providers don't reach yet.
       </p>
+      <!--  Community signals. Two anonymous counters fed by the
+            VPS: distinct Helios card installs that pinged in the
+            last 30 days, and the all-time count of successful
+            pipeline conversions through helios-lidar.org. The
+            values render with `--` until the JS fetches them, so
+            the layout doesn't shift after page load.            -->
+      <div class="about-community" id="about-community">
+        <div class="about-community-stat" id="about-community-installs">
+          <span class="about-community-number" data-stat="installs">,</span>
+          <span class="about-community-label" data-i18n="communityInstalls">
+            Helios cards running on dashboards right now
+          </span>
+        </div>
+        <div class="about-community-stat" id="about-community-conversions">
+          <span class="about-community-number" data-stat="conversions">,</span>
+          <span class="about-community-label" data-i18n="communityConversions">
+            LiDAR conversions processed through this pipeline
+          </span>
+        </div>
+      </div>
       <div class="about-trailer">
         <video
           controls

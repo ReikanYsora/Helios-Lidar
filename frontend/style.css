@@ -991,6 +991,45 @@ button
     background: var(--surface-2);
 }
 
+/*  Community signals strip. Two anonymous totals (active card
+    installs in the last 30 days + all-time pipeline conversions).
+    Sits between the trailer + the screenshot gallery, side-by-
+    side on desktop, stacked on narrow viewports. The numbers are
+    the headline; the label below is a one-line caption. */
+.about-community
+{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin: 16px 0 4px;
+    padding: 14px 18px;
+    background: var(--surface-2);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+.about-community-stat
+{
+    flex: 1 1 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.about-community-number
+{
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+}
+.about-community-label
+{
+    font-size: 13px;
+    opacity: 0.78;
+    line-height: 1.3;
+}
+
+
 .about-link-row
 {
     margin: 4px 0 0;

@@ -23,11 +23,15 @@ import time
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+
+from pydantic import BaseModel, Field
 
 from app import helios_readme, jobs as job_store, lidar_sources
 from app.config import settings
 from app.jobs import Job, JobStatus
+from app.stats import ACTIVE_WINDOW_DAYS, StatsStore
 from pipeline import cog as cog_mod
 from pipeline import dsm_to_ndsm, laz_to_ndsm, yaml_snippet
 from pipeline.validate import ValidationError, inspect, validate_pair
@@ -57,10 +61,80 @@ app = FastAPI(
     version="1.6.3",
 )
 
+#CORS for the public /api endpoints. The Helios card lives on the
+#user's Home Assistant origin (anything from homeassistant.local
+#to a public cloudflare tunnel domain), so the heartbeat would
+#otherwise be blocked by the browser's same-origin policy. Allow
+#any origin since the endpoints are GET (counts) or POST (single
+#anonymous UUID, no auth, no cookies). nginx adds the rate-limit
+#layer on top.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["content-type"],
+    allow_credentials=False,
+    max_age=86400,
+)
+
+
 #Frontend directory: rsync target on the VPS is /var/helios-lidar/frontend,
 #but FastAPI runs from /var/helios-lidar/app, so resolve the sibling
 #`frontend/` next to the `app/` package. Same layout in dev.
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+
+#Anonymous-stats store. Lives next to the existing jobs / output
+#directories; persists across deploys because it's outside the
+#git checkout. Single shared instance because FastAPI runs as one
+#uvicorn worker and StatsStore serialises its own writes.
+_stats = StatsStore(settings.jobs_dir.parent / "stats" / "stats.db")
+
+
+class HeartbeatPayload(BaseModel):
+    install_id: str = Field(min_length=36, max_length=36)
+
+
+@app.post("/api/heartbeat", status_code=204)
+def heartbeat(payload: HeartbeatPayload) -> JSONResponse:
+    """Record one anonymous install heartbeat from a Helios card.
+
+    Body : `{ "install_id": "<uuidv4>" }`. The UUID is generated +
+    persisted in the card's localStorage; the card pings here at
+    most once per browser per 24 h. The endpoint validates the
+    UUIDv4 shape inside StatsStore.record_install() and silently
+    discards any payload that doesn't match.
+
+    Never returns a body. nginx adds a 10 req/min/IP rate-limit
+    on top of this route to absorb spikes.
+    """
+    _stats.record_install(payload.install_id)
+    return JSONResponse(status_code=204, content=None)
+
+
+@app.get("/api/install-count")
+def install_count() -> JSONResponse:
+    """Number of distinct Helios installs that pinged in the last
+    ACTIVE_WINDOW_DAYS days. Consumed by the helios-lidar.org
+    landing page so it can show "Join the N users running Helios".
+    """
+    n = _stats.active_installs()
+    return JSONResponse(
+        content={"count": n, "window_days": ACTIVE_WINDOW_DAYS},
+        headers={"cache-control": "public, max-age=300"},
+    )
+
+
+@app.get("/api/conversions-count")
+def conversions_count() -> JSONResponse:
+    """All-time count of successful pipeline conversions (jobs that
+    reached JobStatus.DONE). Same landing page consumes it for
+    "Already N COGs converted through the pipeline".
+    """
+    n = _stats.total_conversions()
+    return JSONResponse(
+        content={"count": n},
+        headers={"cache-control": "public, max-age=300"},
+    )
 
 
 @app.get("/healthz")
@@ -359,6 +433,12 @@ def _process(job_id: str) -> None:
         #render a live countdown to the deletion moment.
         job.cog_expires_at = time.time() + COG_TTL_SECONDS
         job.save()
+        #Bump the public conversions counter. Best-effort, a
+        #stats hiccup never blocks a finished job.
+        try:
+            _stats.record_conversion()
+        except Exception as exc:
+            log.warning("stats.record_conversion failed: %s", exc)
 
         #Schedule a delayed delete of the COG so the VPS doesn't keep
         #per-user outputs around. The browser auto-download fires
