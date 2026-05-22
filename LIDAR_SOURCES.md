@@ -21,8 +21,8 @@ proof the source actually feeds the pipeline.
 * **Netherlands**, [AHN](https://www.ahn.nl/).
 * **Spain**, [IGN PNOA-LiDAR](https://centrodedescargas.cnig.es/CentroDescargas/buscador-de-productos?productoCNIG=LIDAR).
 * **UK (England)**, [Environment Agency LiDAR Composite](https://environment.data.gov.uk/survey).
-* **USA**, [USGS 3DEP](https://www.usgs.gov/3d-elevation-program),
-  plus state programmes (VCGI Vermont, OCTO Washington DC, etc.).
+* **USA**, [USGS 3DEP – National Map Downloader](https://apps.nationalmap.gov/downloader/).
+  Free, no registration required. Select "Elevation Source Data (3DEP)" in the dataset filter to find LAZ point clouds and DSM/DTM rasters.
 * **Other countries**,
   [OpenTopography](https://opentopography.org/) aggregates public
   LiDAR worldwide, otherwise check your national geoportal.
