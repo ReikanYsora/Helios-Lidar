@@ -20,6 +20,13 @@
 //A 5-second tick refreshes the live PV / battery readings against a
 //clear-sky curve so the card visibly breathes.
 
+//Register the <ha-card> + <ha-icon> shims BEFORE pulling the
+//Helios bundle from the CDN. Doing it here (not in demo.html)
+//means the shim ships from the same origin as the rest of the
+//demo and the browser can defer it just like any other module.
+//No-op when the demo is somehow loaded inside Home Assistant.
+import '/static/ha-shims.js';
+
 import {
     SUPPORTED_LANGS,
     LANG_FLAGS,
