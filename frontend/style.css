@@ -1132,26 +1132,41 @@ button
     text-decoration: underline;
 }
 
-/*  "Open in HACS" button. The SVG badge served by my.home-assistant.io
-    is the canonical visual; we just wrap it in an anchor + nudge the
-    line-height so the row aligns cleanly with the inline link next to
-    it. The badge itself encodes the colours, no recolouring needed.   */
+/*  "Open in HACS" CTA. Standalone row between the About + Primer
+    sections so it lands at the eye-level decision point of a
+    first-time visitor. Centred, generous breathing room, hover
+    lift to signal it's actionable. The SVG badge served by
+    my.home-assistant.io is the canonical visual; we just scale it
+    up via the wrapping anchor.                                    */
+.hass-cta-row
+{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 8px auto 24px;
+    padding: 4px 0;
+}
 .hass-open-btn
 {
     display: inline-flex;
     line-height: 0;
-    transition: transform 120ms ease, opacity 120ms ease;
+    transition: transform 120ms ease, filter 120ms ease;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.18));
 }
 .hass-open-btn:hover
 {
-    transform: translateY(-1px);
-    opacity: 0.9;
+    transform: translateY(-2px);
+    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.24));
 }
 .hass-open-btn img
 {
-    height: 28px;
+    height: 64px;
     width: auto;
     display: block;
+}
+@media (max-width: 560px)
+{
+    .hass-open-btn img { height: 48px; }
 }
 
 /*  TTL countdown row in the result section                            */

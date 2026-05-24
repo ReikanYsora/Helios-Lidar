@@ -84,24 +84,29 @@
         </div>
       </div>
       <p class="about-link-row">
-        <!--  "Open in HACS" deep link via the my.home-assistant.io
-              redirect service. Lands the user directly in their HA
-              instance's HACS dialog with the Helios repo pre-filled,
-              ready to install. Works regardless of HACS-default
-              acceptance: the dialog adds Helios as a custom repo
-              when it isn't in the default catalog yet. The official
-              Open in HA badge SVG is hot-linked from the service
-              (it's a fixed asset, no rate limit).                  -->
-        <a class="hass-open-btn"
-           href="https://my.home-assistant.io/redirect/hacs_repository/?owner=ReikanYsora&amp;repository=Helios&amp;category=plugin"
-           target="_blank"
-           rel="noopener"
-           aria-label="Open the Helios repository in your Home Assistant's HACS">
-          <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open Helios in your Home Assistant via HACS">
-        </a>
         <a href="/helios-card" class="about-link" data-i18n="aboutLink">Learn more about the Helios card &rarr;</a>
       </p>
     </section>
+
+    <!--  "Open in HACS" deep link via the my.home-assistant.io
+          redirect service. Lands the user directly in their HA
+          instance's HACS dialog with the Helios repo pre-filled,
+          ready to install. Works regardless of HACS-default
+          acceptance: the dialog adds Helios as a custom repo when
+          the catalog inclusion is still pending. The official
+          Open-in-HA badge SVG is hot-linked from the service
+          (fixed asset, no rate limit). Standalone block between
+          the About + Primer sections so it lands at the eye-level
+          decision point of a first-time visitor.                -->
+    <div class="hass-cta-row">
+      <a class="hass-open-btn"
+         href="https://my.home-assistant.io/redirect/hacs_repository/?owner=ReikanYsora&amp;repository=Helios&amp;category=plugin"
+         target="_blank"
+         rel="noopener"
+         aria-label="Open the Helios repository in your Home Assistant's HACS">
+        <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open Helios in your Home Assistant via HACS">
+      </a>
+    </div>
 
     <section class="card" id="primer-section">
       <h2 data-i18n="primerH2">First time here? Read this.</h2>
