@@ -56,7 +56,7 @@ app = FastAPI(
     ),
     #Locked to the Helios card version so the two projects ship in
     #lock-step; bump both at once when releasing a paired feature.
-    version="1.6.3",
+    version="1.6.4",
 )
 
 #CORS for the public /api endpoints. The landing page consumes

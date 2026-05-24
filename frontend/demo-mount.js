@@ -28,7 +28,7 @@
 //uses to forward language + theme changes from its switchers to
 //the embedded card.
 
-const HELIOS_BUNDLE_URL = 'https://cdn.jsdelivr.net/gh/ReikanYsora/Helios@v1.6.3/dist/helios.js';
+const HELIOS_BUNDLE_URL = 'https://cdn.jsdelivr.net/gh/ReikanYsora/Helios@v1.6.4/dist/helios.js';
 
 //Fictional demo home: a residential address near Montpellier,
 //well inside IGN HD France's LiDAR coverage so the LiDAR layer

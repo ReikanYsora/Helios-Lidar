@@ -546,7 +546,12 @@ async function loadCommunityStats()
         if (downloadsResp.ok)
         {
             const data = await downloadsResp.json();
-            setStat('downloads', data.latest_downloads);
+            //Total across every release. The latest-version count is
+            //fragile (GitHub resets it on every asset re-upload when
+            //a tag gets force-moved on a release-build workflow), so
+            //we surface the cumulative number instead and reserve the
+            //per-version split for the hover tooltip.
+            setStat('downloads', data.total_downloads);
             renderDownloadsTooltip(data);
         }
         if (conversionsResp.ok)
