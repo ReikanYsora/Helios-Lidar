@@ -1160,13 +1160,13 @@ button
 }
 .hass-open-btn img
 {
-    height: 64px;
+    height: 44px;
     width: auto;
     display: block;
 }
 @media (max-width: 560px)
 {
-    .hass-open-btn img { height: 48px; }
+    .hass-open-btn img { height: 36px; }
 }
 
 /*  TTL countdown row in the result section                            */
