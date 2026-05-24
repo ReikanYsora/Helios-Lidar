@@ -972,11 +972,34 @@ button
 
 .data-sources-content
 {
-    /*  Rendered server-side from LIDAR_SOURCES.md. We hide the
-        markdown's own H1 + H2 because the help block already
-        provides its title (the <summary>) and its closing
-        contribute note; showing the markdown headings on top of
-        that just makes the panel noisy.                            */
+    /*  Now hosts a <pre><code> dump of the raw LIDAR_SOURCES.md
+        text so visitors immediately read it as "the file itself";
+        styles for that pair live in .data-sources-pre below. */
+}
+
+/*  Raw LIDAR_SOURCES.md displayed verbatim as a code block. Mono-
+    spaced, scrollable on overflow, sits on the same code-bg as the
+    YAML snippet on the result page so the two read as the same
+    visual family ("here is a file we generated / store").         */
+.data-sources-pre
+{
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin: 0 0 12px;
+    overflow-x: auto;
+    max-height: 360px;
+    overflow-y: auto;
+}
+.data-sources-code
+{
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--ink);
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 /*  Intro paragraph that sits above the server-rendered country

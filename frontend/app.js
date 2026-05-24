@@ -79,9 +79,19 @@ async function fetchAndInjectLidarSources()
     {
         const resp = await fetch('/api/lidar-sources', { headers: { 'Accept': 'application/json' } });
         const data = await resp.json();
-        if (resp.ok && data.html)
+        if (resp.ok && typeof data.text === 'string')
         {
-            slot.innerHTML = data.html;
+            //Render as a code block so visitors see "this is the
+            //actual LIDAR_SOURCES.md file from the repo" rather
+            //than a rewritten list. textContent prevents any
+            //markdown construct from escaping into live HTML.
+            const pre  = document.createElement('pre');
+            const code = document.createElement('code');
+            pre.className  = 'data-sources-pre';
+            code.className = 'data-sources-code';
+            code.textContent = data.text;
+            pre.appendChild(code);
+            slot.replaceChildren(pre);
             slot.removeAttribute('data-i18n');
         }
     }

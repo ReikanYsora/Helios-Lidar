@@ -155,11 +155,12 @@ def index() -> JSONResponse:
 
 @app.get("/api/lidar-sources")
 def api_lidar_sources() -> JSONResponse:
-    """Return the rendered LIDAR_SOURCES.md as HTML. Source of truth
-    is the markdown file at the repo root, community-maintained via
-    pull requests.
+    """Return the raw LIDAR_SOURCES.md text. Source of truth is the
+    markdown file at the repo root, community-maintained via pull
+    requests. The upload page renders the response inside a code-
+    block frame so visitors see exactly what's in the file.
     """
-    return JSONResponse({"html": lidar_sources.render_html()})
+    return JSONResponse({"text": lidar_sources.render_text()})
 
 
 @app.post("/jobs")
