@@ -35,10 +35,11 @@ log = logging.getLogger("helios-lidar")
 GITHUB_OWNER = "ReikanYsora"
 GITHUB_REPO = "Helios"
 
-#One hour TTL. New releases happen every few weeks; an hour of
-#staleness is invisible on the counter and keeps us well under
-#GitHub's 60 req/h anonymous quota.
-CACHE_TTL_SECONDS = 60 * 60
+#Five minutes TTL. Short enough that a new download shows up on
+#the page near-real-time, long enough that the worker fires at
+#most 12 GitHub calls per hour, well below the 60 req/h anonymous
+#quota even if every cached fetch happens to expire under load.
+CACHE_TTL_SECONDS = 5 * 60
 
 #Hard cap on the response size so a hostile redirect or malformed
 #response can't pin the worker. A page of 100 releases with full

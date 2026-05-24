@@ -114,10 +114,15 @@ header h1
     align-items: center;
 }
 
-/*  Sky base layer: vertical gradient that shifts from "high sky"
-    at the top to "horizon glow" at the bottom over the 60 s loop.
-    Sits behind the moving sun (::after) and the icon. Static layout,
-    only the colour stops animate. */
+/*  Sky layer: a single static vertical sky gradient (deep blue at
+    altitude, cyan mid, warm horizon) recoloured over time via a
+    hue-rotate + brightness cycle. Hue-rotate sweeps the whole
+    gradient through every sky colour smoothly, brightness dims the
+    night portion. No blend modes, no overlay, no moving radial:
+    the previous moving-sun + screen-blend combo strobed visibly on
+    every cycle because the radial gradient kept entering / leaving
+    a low-alpha state on top of the gradient base. Single layer
+    keeps the loop calm and unmistakably sky-shaped.                */
 .brand-banner::before
 {
     content: '';
@@ -125,42 +130,14 @@ header h1
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    animation: sky-gradient 60s linear infinite;
+    animation: sky-cycle 90s linear infinite;
     background: linear-gradient(
         to bottom,
-        rgba(20, 30, 55, 0.55),
-        rgba(20, 30, 55, 0.30) 60%,
-        rgba(60, 40, 75, 0.20)
+        #1c2c4e 0%,
+        #3a6aa3 38%,
+        #f8b86a 82%,
+        #d97c4d 100%
     );
-}
-
-/*  Moving sun: a soft radial halo that travels left-to-right across
-    the banner over the same 60 s loop, brightening sharply at noon
-    and going dim / blue at night. Drives the "real sky" feel that a
-    static tint couldn't give. */
-.brand-banner::after
-{
-    content: '';
-    position: absolute;
-    top: -40%;
-    bottom: -40%;
-    left: 0;
-    right: 0;
-    z-index: 0;
-    pointer-events: none;
-    animation: sun-traverse 60s linear infinite;
-    background-image: radial-gradient(
-        circle at 0% 50%,
-        rgba(255, 220, 150, 0.85) 0%,
-        rgba(255, 180, 110, 0.55) 6%,
-        rgba(255, 140,  80, 0.30) 12%,
-        rgba(255, 120,  90, 0.10) 22%,
-        transparent 35%
-    );
-    background-size: 200% 100%;
-    background-repeat: no-repeat;
-    mix-blend-mode: screen;
-    filter: blur(2px);
 }
 
 .brand-icon
@@ -276,42 +253,21 @@ header h1
     100% { background-color: rgba( 20,  30,  55, 0.35); }  /* loop back to midnight */
 }
 
-/*  Sky gradient cycle synced to sun-traverse below: same 60 s loop,
-    same key timing. Top-of-sky stop carries the dramatic colour
-    shifts, the lower stops stay desaturated so the icon never sits
-    on a solid wash that would fight the moving sun.                */
-@keyframes sky-gradient
+/*  Sky cycle: rotate the gradient through hue space while dipping
+    the brightness at night. One filter property, no opacity, no
+    blend modes => no overlapping layers to strobe against each
+    other. The hue-rotate sweep takes the base "deep blue -> warm
+    horizon" gradient through every plausible sky colour (dawn pink,
+    noon blue, sunset orange, twilight purple) over the loop.       */
+@keyframes sky-cycle
 {
-    0%, 100% { background: linear-gradient(to bottom, rgba( 10,  18,  45, 0.85), rgba( 25,  30,  60, 0.55) 55%, rgba( 35,  35,  75, 0.40)); }  /* deep night */
-    8%       { background: linear-gradient(to bottom, rgba( 28,  22,  60, 0.75), rgba( 60,  35,  80, 0.50) 55%, rgba( 95,  45,  90, 0.35)); }  /* astronomical twilight */
-    16%      { background: linear-gradient(to bottom, rgba( 80,  35,  85, 0.60), rgba(155,  60,  85, 0.45) 55%, rgba(220, 115,  70, 0.30)); }  /* civil twilight, pink horizon */
-    25%      { background: linear-gradient(to bottom, rgba(150,  90, 130, 0.40), rgba(220, 140,  90, 0.30) 55%, rgba(255, 180, 100, 0.20)); }  /* sunrise glow */
-    35%      { background: linear-gradient(to bottom, rgba( 90, 140, 200, 0.30), rgba(180, 200, 220, 0.20) 55%, rgba(245, 225, 180, 0.15)); }  /* morning blue */
-    50%      { background: linear-gradient(to bottom, rgba( 60, 120, 210, 0.32), rgba(150, 195, 230, 0.18) 55%, rgba(250, 240, 210, 0.10)); }  /* noon clear sky */
-    65%      { background: linear-gradient(to bottom, rgba( 95, 145, 200, 0.30), rgba(195, 195, 215, 0.22) 55%, rgba(245, 215, 165, 0.18)); }  /* afternoon */
-    75%      { background: linear-gradient(to bottom, rgba(160, 100, 130, 0.45), rgba(225, 130,  80, 0.35) 55%, rgba(245, 165,  90, 0.30)); }  /* sunset orange */
-    84%      { background: linear-gradient(to bottom, rgba( 70,  40,  85, 0.65), rgba(120,  55,  90, 0.50) 55%, rgba(165,  75,  95, 0.40)); }  /* dusk magenta */
-    92%      { background: linear-gradient(to bottom, rgba( 25,  30,  65, 0.78), rgba( 45,  40,  80, 0.55) 55%, rgba( 60,  45,  85, 0.40)); }  /* nautical twilight */
-}
-
-/*  Sun-disc traverse: a radial halo placed at 0% in the keyframe
-    image, slid right via background-position so it crosses the
-    banner once per 60 s loop. We also fade its opacity so the disc
-    only "exists" during daylight hours (sunrise -> sunset), going
-    invisible through the night portion. Matches sky-gradient.       */
-@keyframes sun-traverse
-{
-    0%     { background-position:   0% 50%; opacity: 0.00; }   /* midnight, no sun */
-    16%    { background-position:   0% 50%; opacity: 0.00; }   /* still dark, sun hidden */
-    20%    { background-position:   2% 70%; opacity: 0.30; }   /* sunrise, sun low + warm */
-    25%    { background-position:  12% 60%; opacity: 0.55; }   /* climbing, redder */
-    35%    { background-position:  28% 45%; opacity: 0.80; }   /* morning, brighter + cooler */
-    50%    { background-position:  50% 38%; opacity: 1.00; }   /* noon: high + brightest */
-    65%    { background-position:  72% 45%; opacity: 0.85; }   /* afternoon */
-    75%    { background-position:  88% 60%; opacity: 0.65; }   /* sunset, dipping + warming */
-    80%    { background-position:  98% 70%; opacity: 0.35; }   /* horizon, fading */
-    84%    { background-position: 100% 80%; opacity: 0.00; }   /* gone below */
-    100%   { background-position: 100% 80%; opacity: 0.00; }   /* night, no sun */
+    0%   { filter: hue-rotate(  0deg) saturate(0.85) brightness(0.45); }  /* midnight */
+    20%  { filter: hue-rotate(-20deg) saturate(1.10) brightness(0.75); }  /* dawn */
+    35%  { filter: hue-rotate(-10deg) saturate(0.95) brightness(1.05); }  /* morning */
+    50%  { filter: hue-rotate(  0deg) saturate(0.90) brightness(1.15); }  /* noon */
+    65%  { filter: hue-rotate( 15deg) saturate(1.00) brightness(1.05); }  /* afternoon */
+    80%  { filter: hue-rotate( 30deg) saturate(1.20) brightness(0.80); }  /* sunset */
+    100% { filter: hue-rotate(  0deg) saturate(0.85) brightness(0.45); }  /* loop back to midnight */
 }
 
 .brand-strip-text
@@ -1160,6 +1116,7 @@ button
     font-size: 14px;
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     gap: 18px;
     flex-wrap: wrap;
 }
@@ -1173,6 +1130,28 @@ button
 .about-link:hover
 {
     text-decoration: underline;
+}
+
+/*  "Open in HACS" button. The SVG badge served by my.home-assistant.io
+    is the canonical visual; we just wrap it in an anchor + nudge the
+    line-height so the row aligns cleanly with the inline link next to
+    it. The badge itself encodes the colours, no recolouring needed.   */
+.hass-open-btn
+{
+    display: inline-flex;
+    line-height: 0;
+    transition: transform 120ms ease, opacity 120ms ease;
+}
+.hass-open-btn:hover
+{
+    transform: translateY(-1px);
+    opacity: 0.9;
+}
+.hass-open-btn img
+{
+    height: 28px;
+    width: auto;
+    display: block;
 }
 
 /*  TTL countdown row in the result section                            */

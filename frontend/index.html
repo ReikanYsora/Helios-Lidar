@@ -9,7 +9,7 @@
 </head>
 <body>
   <div class="lang-strip">
-    <span class="site-version" aria-label="Site version">v1.6.3</span>
+    <span class="site-version" aria-label="Site version">v1.6.4</span>
     <div class="lang-switcher" id="lang-switcher" aria-label="Language"></div>
   </div>
   <main>
@@ -84,6 +84,21 @@
         </div>
       </div>
       <p class="about-link-row">
+        <!--  "Open in HACS" deep link via the my.home-assistant.io
+              redirect service. Lands the user directly in their HA
+              instance's HACS dialog with the Helios repo pre-filled,
+              ready to install. Works regardless of HACS-default
+              acceptance: the dialog adds Helios as a custom repo
+              when it isn't in the default catalog yet. The official
+              Open in HA badge SVG is hot-linked from the service
+              (it's a fixed asset, no rate limit).                  -->
+        <a class="hass-open-btn"
+           href="https://my.home-assistant.io/redirect/hacs_repository/?owner=ReikanYsora&amp;repository=Helios&amp;category=plugin"
+           target="_blank"
+           rel="noopener"
+           aria-label="Open the Helios repository in your Home Assistant's HACS">
+          <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open Helios in your Home Assistant via HACS">
+        </a>
         <a href="/helios-card" class="about-link" data-i18n="aboutLink">Learn more about the Helios card &rarr;</a>
       </p>
     </section>
@@ -97,7 +112,7 @@
         in formats Helios can't read directly) into that file.
       </p>
 
-      <details class="help-block" id="help-data" open>
+      <details class="help-block" id="help-data">
         <summary data-i18n="helpGlossary">Quick glossary of the words on this page</summary>
         <div class="help-content">
           <dl class="glossary">

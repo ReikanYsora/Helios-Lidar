@@ -196,7 +196,7 @@ export function mountHeliosDemo({ hostEl, initialLang })
         'building-radius':         250,
         'lidar-precision':         'medium',
         'building-opacity':        0.25,
-        'building-cluster-radius': 20,
+        'building-cluster-radius': 10,
         'shadow-opacity':          0.45,
         'card-theme':              pendingTheme,
         'timeline-enabled':        true,
