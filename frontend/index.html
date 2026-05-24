@@ -8,8 +8,18 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <!--  Edge blur strips: backdrop-filter only on the outer 40 % of
+        each side, mask-gradient fades to zero by the 40 % / 60 %
+        viewport marks so the centre stays sharp.                  -->
+  <div class="bg-blur bg-blur--left"  aria-hidden="true"></div>
+  <div class="bg-blur bg-blur--right" aria-hidden="true"></div>
   <div class="lang-strip">
-    <span class="site-version" aria-label="Site version">v1.6.4</span>
+    <div class="lang-strip-left">
+      <a class="repo-link" href="https://github.com/ReikanYsora/Helios" target="_blank" rel="noopener" aria-label="Helios GitHub repository">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+      </a>
+      <span class="site-version" aria-label="Site version">v1.6.4</span>
+    </div>
     <div class="lang-switcher" id="lang-switcher" aria-label="Language"></div>
   </div>
   <main>
@@ -19,63 +29,40 @@
       </div>
       <div class="brand-strip">
         <span class="brand-strip-text" data-i18n="brandStrip">
-          Convert LiDAR data for the
-          <a href="/helios-card">Helios card</a>
-          for
-          <a href="https://www.home-assistant.io/" target="_blank" rel="noopener">Home Assistant</a>
+          A 3D solar card for
+          <a href="https://www.home-assistant.io/" target="_blank" rel="noopener">Home Assistant</a>, with the LiDAR conversion service it needs
         </span>
       </div>
-      <h1>Helios-Lidar</h1>
+      <h1 data-i18n="siteTitle">Helios</h1>
       <p class="lede" data-i18n="lede">
-        From raw LiDAR to the nDSM file the
-        <a href="/helios-card">Helios card</a> needs, with the YAML
-        block to paste into your configuration.
+        A 3D Lovelace card for Home Assistant that paints live sun position, cloud cover, real cast shadows from buildings and trees and a self-learning PV forecast on a MapLibre map of your home. This site converts your raw LiDAR data into a file the card can read, in regions the built-in providers don't reach yet.
       </p>
     </header>
 
     <section class="card" id="about-helios-section">
-      <h2 data-i18n="aboutH2">About the Helios card</h2>
-      <p class="section-lead" data-i18n="aboutLead">
-        Helios is a Lovelace card for Home Assistant that paints live solar
-        conditions on a 3D map of your home: the sun arc, cloud cover, real
-        cast shadows from buildings and trees, an optional PV production
-        overlay with a self-learning forecast, and a scrubbable 5-day
-        timeline. This site exists to give that card the LiDAR data it
-        needs in regions where the built-in providers don't reach yet.
-      </p>
-      <!--  Live demo of the real Helios card running against a
-            mocked Home Assistant `hass` object. Replaces the
-            previous trailer video + screenshot gallery: visitors
-            can drag / pinch / scrub the actual card directly
-            instead of watching a recording. demo-mount.js (loaded
-            via app.js) appends a <helios-card> to this slot.    -->
-      <div class="about-demo-wrap" id="demo-card-wrap"></div>
-      <!--  Theme toggle for the live demo card above. Drives the
-            embedded card's `card-theme` config in real time so
-            readers can compare both looks side by side without
-            scrolling away.                                       -->
+      <!--  Theme toggle for the live demo card below. Sits flush
+            above the demo so readers can flip the embedded card's
+            theme in real time before they engage with it.        -->
       <div class="about-theme-toggle" id="about-theme-toggle" role="radiogroup" aria-label="Demo card theme">
         <button type="button" class="theme-btn is-active" role="radio" aria-checked="true" data-theme="dark">
-          <!--  Crescent moon glyph for the dark theme. -->
           <svg class="theme-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
           <span data-i18n="themeToggleDark">Dark</span>
         </button>
         <button type="button" class="theme-btn"          role="radio" aria-checked="false" data-theme="light">
-          <!--  Sun glyph for the light theme. -->
           <svg class="theme-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g></svg>
           <span data-i18n="themeToggleLight">Light</span>
         </button>
       </div>
-      <!--  Community signals. Two public totals: cumulative
-            downloads of the latest Helios card release on GitHub
-            (with a hover tooltip listing the per-version split,
-            fed by `/api/helios-downloads`), and the all-time
-            count of successful pipeline conversions through
-            helios-lidar.org. The values render with `--` until the
-            JS fetches them, so the layout doesn't shift on load. -->
+      <!--  Live demo of the real Helios card running against a
+            mocked Home Assistant `hass` object. demo-mount.js
+            (loaded via app.js) appends a <helios-card> to this
+            slot.                                                 -->
+      <div class="about-demo-wrap" id="demo-card-wrap"></div>
+      <!--  Community signals. Latest-version download count from
+            the GitHub Releases API + all-time conversions through
+            the pipeline.                                          -->
       <div class="about-community" id="about-community">
         <div class="about-community-stat" id="about-community-downloads">
-          <!--  Down-arrow into a tray for "download". -->
           <svg class="about-community-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/></svg>
           <div class="about-community-stat-body">
             <span class="about-community-number" data-stat="downloads">,</span>
@@ -85,9 +72,6 @@
           </div>
         </div>
         <div class="about-community-stat" id="about-community-conversions">
-          <!--  Circular sync arrows: universal "transform / convert"
-                glyph (the file passes through a server-side conversion
-                and comes back out).                                  -->
           <svg class="about-community-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15 6.7"/><path d="M3 12a9 9 0 0 1 15-6.7"/><path d="M21 3v5h-5"/><path d="M3 21v-5h5"/></g></svg>
           <div class="about-community-stat-body">
             <span class="about-community-number" data-stat="conversions">,</span>
@@ -97,30 +81,20 @@
           </div>
         </div>
       </div>
-      <p class="about-link-row">
-        <a href="/helios-card" class="about-link" data-i18n="aboutLink">Learn more about the Helios card &rarr;</a>
-      </p>
+      <!--  "Open in HACS" badge at the very bottom of the section,
+            the primary install CTA. Deep-link via my.home-assistant.io
+            redirect, lands users on their HA's HACS dialog with the
+            Helios repo pre-filled.                                  -->
+      <div class="hass-cta-row">
+        <a class="hass-open-btn"
+           href="https://my.home-assistant.io/redirect/hacs_repository/?owner=ReikanYsora&amp;repository=Helios&amp;category=plugin"
+           target="_blank"
+           rel="noopener"
+           aria-label="Open the Helios repository in your Home Assistant's HACS">
+          <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open Helios in your Home Assistant via HACS">
+        </a>
+      </div>
     </section>
-
-    <!--  "Open in HACS" deep link via the my.home-assistant.io
-          redirect service. Lands the user directly in their HA
-          instance's HACS dialog with the Helios repo pre-filled,
-          ready to install. Works regardless of HACS-default
-          acceptance: the dialog adds Helios as a custom repo when
-          the catalog inclusion is still pending. The official
-          Open-in-HA badge SVG is hot-linked from the service
-          (fixed asset, no rate limit). Standalone block between
-          the About + Primer sections so it lands at the eye-level
-          decision point of a first-time visitor.                -->
-    <div class="hass-cta-row">
-      <a class="hass-open-btn"
-         href="https://my.home-assistant.io/redirect/hacs_repository/?owner=ReikanYsora&amp;repository=Helios&amp;category=plugin"
-         target="_blank"
-         rel="noopener"
-         aria-label="Open the Helios repository in your Home Assistant's HACS">
-        <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open Helios in your Home Assistant via HACS">
-      </a>
-    </div>
 
     <section class="card" id="primer-section">
       <h2 data-i18n="primerH2">First time here? Read this.</h2>

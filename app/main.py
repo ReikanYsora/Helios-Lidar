@@ -26,7 +26,7 @@ from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
-from app import helios_downloads, helios_readme, jobs as job_store, lidar_sources
+from app import helios_downloads, jobs as job_store, lidar_sources
 from app.config import settings
 from app.jobs import Job, JobStatus
 from app.stats import StatsStore
@@ -153,16 +153,6 @@ def index() -> JSONResponse:
     )
 
 
-@app.get("/helios-card")
-def helios_card_page() -> FileResponse:
-    """Serve the static Helios-card landing page. The README content
-    itself is injected by the page's JS on load via
-    `GET /api/helios-readme`.
-    """
-    page = FRONTEND_DIR / "helios-card.html"
-    return FileResponse(page, media_type="text/html; charset=utf-8")
-
-
 @app.get("/api/lidar-sources")
 def api_lidar_sources() -> JSONResponse:
     """Return the rendered LIDAR_SOURCES.md as HTML. Source of truth
@@ -170,34 +160,6 @@ def api_lidar_sources() -> JSONResponse:
     pull requests.
     """
     return JSONResponse({"html": lidar_sources.render_html()})
-
-
-@app.get("/api/helios-readme")
-def api_helios_readme() -> JSONResponse:
-    """Return the rendered Helios card README + the release tag it
-    came from. Cached in-process for an hour, see `helios_readme`.
-    """
-    rendered = helios_readme.get_rendered_readme()
-    if rendered is None:
-        return JSONResponse(
-            {
-                "html": None,
-                "release_tag": None,
-                "release_url": (
-                    f"https://github.com/{helios_readme.GITHUB_OWNER}/"
-                    f"{helios_readme.GITHUB_REPO}"
-                ),
-                "error": "Helios README is not available yet, retry shortly.",
-            },
-            status_code=503,
-        )
-    return JSONResponse(
-        {
-            "html": rendered.html,
-            "release_tag": rendered.release_tag,
-            "release_url": rendered.release_url,
-        }
-    )
 
 
 @app.post("/jobs")

@@ -175,6 +175,34 @@ header h1
     box-sizing: border-box;
 }
 
+/*  Left cluster in the lang-strip: GitHub repo link first, version
+    label next. The icon is a thin-outline GitHub mark sized to the
+    same height as the version label so the line reads as one row. */
+.lang-strip-left
+{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.repo-link
+{
+    display: inline-flex;
+    align-items: center;
+    color: #51565d;
+    transition: color 120ms ease, transform 120ms ease;
+}
+.repo-link:hover
+{
+    color: var(--accent);
+    transform: translateY(-1px);
+}
+.repo-link svg
+{
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
 .site-version
 {
     font-size: 11px;
@@ -194,13 +222,41 @@ header h1
     inset: 0;
     width: 100vw;
     height: 100vh;
-    z-index: -1;
+    z-index: -2;
     pointer-events: none;
     display: block;
     background-color: var(--bg);
-    /*  Very light blur so the lattice reads as out-of-focus depth
-        instead of fighting the foreground text for attention.    */
-    filter: blur(1.5px);
+}
+
+/*  Edge blur strips: two fixed overlays that sit above the canvas
+    and below the page content, applying a backdrop-filter blur
+    only on the outer 40 % of each side. A mask gradient fades the
+    blur from full strength at the screen edges to zero at the 40 %
+    / 60 % marks, leaving the centre 20 % of the viewport sharp.
+    The lattice keeps its full clarity where the user is reading and
+    softens into atmospheric depth at the page margins.            */
+.bg-blur
+{
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 40vw;
+    z-index: -1;
+    pointer-events: none;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+.bg-blur--left
+{
+    left: 0;
+    -webkit-mask-image: linear-gradient(to right, #000 0%, transparent 100%);
+            mask-image: linear-gradient(to right, #000 0%, transparent 100%);
+}
+.bg-blur--right
+{
+    right: 0;
+    -webkit-mask-image: linear-gradient(to left, #000 0%, transparent 100%);
+            mask-image: linear-gradient(to left, #000 0%, transparent 100%);
 }
 
 /*  Centred tagline strip sitting just under the icon banner. Plain
