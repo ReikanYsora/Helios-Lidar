@@ -22,15 +22,47 @@ import * as THREE from 'https://esm.sh/three@0.169.0';
 
 const GRID = 160;
 const CELL = 1.6;
-const POINT_COLOR = 0x3a3f46;
 const POINT_SIZE_PX = 1.2;
-const POINT_OPACITY = 0.55;
-const WIRE_COLOR = 0x2b3036;
-const WIRE_OPACITY = 0.30;
-const BG_COLOR = 0x0b0d10;
+const WIRE_OPACITY_DARK = 0.30;
+const WIRE_OPACITY_LIGHT = 0.55;
+const POINT_OPACITY_DARK = 0.55;
+const POINT_OPACITY_LIGHT = 0.70;
 const FOG_NEAR = 60;
 const FOG_FAR  = 180;
 const ROTATION_SPEED_RAD_PER_SEC = 0.035;
+
+//Per-theme palette for the ambient lattice. Dark theme: medium-
+//grey mesh on near-black bg, just visible enough to read as
+//texture. Light theme: dark-grey mesh on near-white bg so the
+//lattice + fog still produce the same "out-of-focus topology"
+//feel against the inverted page palette.
+const THEME_PALETTES = {
+    dark: {
+        pointColor:   0x3a3f46,
+        pointOpacity: POINT_OPACITY_DARK,
+        wireColor:    0x2b3036,
+        wireOpacity:  WIRE_OPACITY_DARK,
+        bgColor:      0x0b0d10,
+    },
+    light: {
+        pointColor:   0x6b7280,
+        pointOpacity: POINT_OPACITY_LIGHT,
+        wireColor:    0x9aa0a8,
+        wireOpacity:  WIRE_OPACITY_LIGHT,
+        bgColor:      0xf6f7f9,
+    },
+};
+
+function paletteFor(theme)
+{
+    return theme === 'light' ? THEME_PALETTES.light : THEME_PALETTES.dark;
+}
+
+function currentTheme()
+{
+    const t = document.documentElement.getAttribute('data-theme');
+    return t === 'light' ? 'light' : 'dark';
+}
 
 //Slow ambient breathing of the terrain heights. We layer a low-
 //frequency sine over the static landscape so the lattice gently
@@ -60,10 +92,12 @@ function init()
         powerPreference: 'low-power',
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    renderer.setClearColor(BG_COLOR, 1);
+
+    const initialPalette = paletteFor(currentTheme());
+    renderer.setClearColor(initialPalette.bgColor, 1);
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(BG_COLOR, FOG_NEAR, FOG_FAR);
+    scene.fog = new THREE.Fog(initialPalette.bgColor, FOG_NEAR, FOG_FAR);
 
     //Pulled in tighter than the previous grid: the camera now sits
     //inside the lattice, the fog hides the far edge entirely, so
@@ -76,27 +110,48 @@ function init()
     scene.add(root);
 
     const { geometry, baseHeights } = buildSyntheticTerrain();
-    const points = new THREE.Points(
-        geometry,
-        new THREE.PointsMaterial({
-            color: POINT_COLOR,
-            size: POINT_SIZE_PX,
-            sizeAttenuation: false,
-            transparent: true,
-            opacity: POINT_OPACITY,
-            depthWrite: false,
-            fog: true,
-        }),
-    );
+    const pointsMat = new THREE.PointsMaterial({
+        color: initialPalette.pointColor,
+        size: POINT_SIZE_PX,
+        sizeAttenuation: false,
+        transparent: true,
+        opacity: initialPalette.pointOpacity,
+        depthWrite: false,
+        fog: true,
+    });
+    const wireMat = new THREE.LineBasicMaterial({
+        color: initialPalette.wireColor,
+        transparent: true,
+        opacity: initialPalette.wireOpacity,
+        depthWrite: false,
+        fog: true,
+    });
+    const points = new THREE.Points(geometry, pointsMat);
     const wireframe = new THREE.LineSegments(
         buildWireframeFromGrid(geometry, GRID),
-        new THREE.LineBasicMaterial({
-            color: WIRE_COLOR,
-            transparent: true,
-            opacity: WIRE_OPACITY,
-            depthWrite: false,
-            fog: true,
-        }),
+        wireMat,
+    );
+
+    //Re-apply the right palette whenever the html data-theme
+    //attribute flips. Cheap: only touches three material props +
+    //the scene fog colour + the renderer clear colour.
+    function applyTheme()
+    {
+        const p = paletteFor(currentTheme());
+        pointsMat.color.setHex(p.pointColor);
+        pointsMat.opacity = p.pointOpacity;
+        wireMat.color.setHex(p.wireColor);
+        wireMat.opacity = p.wireOpacity;
+        renderer.setClearColor(p.bgColor, 1);
+        scene.fog.color.setHex(p.bgColor);
+        //Also update the canvas CSS background fallback so the
+        //first frame before render lands in the right colour too.
+        canvas.style.backgroundColor = `#${p.bgColor.toString(16).padStart(6, '0')}`;
+    }
+    applyTheme();
+    new MutationObserver(applyTheme).observe(
+        document.documentElement,
+        { attributes: true, attributeFilter: ['data-theme'] },
     );
     //Mark the position attribute as dynamic so the slow height
     //breathing in tick() doesn't fight a static-draw upload hint.

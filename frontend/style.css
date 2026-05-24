@@ -40,15 +40,18 @@
 }
 
 /*  Light theme: mirrors the dark palette with surfaces pulled to
-    near-white and ink pushed to near-black. Triggered by the body
+    near-white and ink pushed to near-black. Triggered by the html
     attribute `data-theme="light"`; the demo card's theme toggle
     flips that attribute so the whole site follows the embedded
-    card's appearance.                                            */
-:root, body[data-theme="dark"]
+    card's appearance. We scope on <html> rather than <body> so
+    custom CSS variables resolve correctly on the html element
+    itself (the html background falls back to var(--bg), which
+    only sees the var override when it sits in the ancestor chain). */
+:root, html[data-theme="dark"]
 {
     color-scheme: dark;
 }
-body[data-theme="light"]
+html[data-theme="light"]
 {
     color-scheme: light;
     --bg:           #f6f7f9;
@@ -277,12 +280,11 @@ header h1
     background-color: var(--bg);
 }
 
-/*  The pointcloud canvas + edge blur strips are baked for the
-    dark palette (dark grey lattice on near-black background).
-    Hide them in light theme: a clean white page reads better than
-    a dark canvas struggling under a bright UI.                  */
-body[data-theme="light"] .bg-pointcloud,
-body[data-theme="light"] .bg-blur
+/*  Edge blur strips read as atmosphere only on the dark palette
+    where there's a textured pointcloud behind them to soften;
+    on the flat light surface they just look like a blurred white
+    bar, hide them.                                                */
+html[data-theme="light"] .bg-blur
 {
     display: none;
 }
@@ -1407,14 +1409,15 @@ button
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    /*  Always-visible chip: light translucent surface + soft border
-        so the button reads as actionable without waiting for hover.
-        Previously the empty hover-only state made the icon look
-        absent on the dark code background.                         */
-    background: var(--hover-wash);
-    border: 1px solid var(--border);
+    /*  Always-visible chip: explicit semi-opaque surface + clear
+        border so the action reads at a glance, and an opaque accent
+        icon colour so the glyph itself never disappears against the
+        chip background. Earlier translucent treatments looked empty
+        on the dark code-bg.                                        */
+    background: var(--hover-wash-strong);
+    border: 1px solid var(--accent);
     border-radius: 6px;
-    color: var(--ink);
+    color: var(--accent);
     cursor: pointer;
     transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }

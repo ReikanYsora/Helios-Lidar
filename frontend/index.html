@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="/static/helios-icon.png">
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body data-theme="dark">
+<body>
   <!--  Edge blur strips: backdrop-filter only on the outer 40 % of
         each side, mask-gradient fades to zero by the 40 % / 60 %
         viewport marks so the centre stays sharp.                  -->
@@ -311,10 +311,15 @@
         <div class="snippet-wrap">
           <pre class="snippet" id="result-snippet"></pre>
           <button type="button" class="snippet-copy" id="copy-snippet" aria-label="Copy snippet" title="Copy to clipboard">
-            <!--  Two-sheets clipboard glyph (default state). -->
-            <svg class="snippet-copy-icon snippet-copy-icon--idle" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></g></svg>
-            <!--  Checkmark glyph (shown for ~1.2 s after a successful copy). -->
-            <svg class="snippet-copy-icon snippet-copy-icon--done" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12l5 5L20 7"/></svg>
+            <!--  Two-sheets clipboard glyph (Feather "copy"), idle state. -->
+            <svg class="snippet-copy-icon snippet-copy-icon--idle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <!--  Checkmark glyph, shown for ~1.2 s after a successful copy. -->
+            <svg class="snippet-copy-icon snippet-copy-icon--done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M5 12l5 5L20 7"/>
+            </svg>
           </button>
         </div>
       </div>

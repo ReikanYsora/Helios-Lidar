@@ -690,7 +690,10 @@ function getSavedTheme()
 function applySiteTheme(theme)
 {
     if (theme !== 'light' && theme !== 'dark') return;
-    document.body.setAttribute('data-theme', theme);
+    //Attribute lives on <html> so var(--bg) on the html element
+    //resolves to the right palette (CSS vars only cascade down,
+    //so body-scoped overrides never reach the html background).
+    document.documentElement.setAttribute('data-theme', theme);
     try { localStorage.setItem(THEME_STORAGE_KEY, theme); }
     catch (_) { /* private mode etc */ }
     //Forward to the embedded demo card so it follows the site.
