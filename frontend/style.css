@@ -114,6 +114,55 @@ header h1
     align-items: center;
 }
 
+/*  Sky base layer: vertical gradient that shifts from "high sky"
+    at the top to "horizon glow" at the bottom over the 60 s loop.
+    Sits behind the moving sun (::after) and the icon. Static layout,
+    only the colour stops animate. */
+.brand-banner::before
+{
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    animation: sky-gradient 60s linear infinite;
+    background: linear-gradient(
+        to bottom,
+        rgba(20, 30, 55, 0.55),
+        rgba(20, 30, 55, 0.30) 60%,
+        rgba(60, 40, 75, 0.20)
+    );
+}
+
+/*  Moving sun: a soft radial halo that travels left-to-right across
+    the banner over the same 60 s loop, brightening sharply at noon
+    and going dim / blue at night. Drives the "real sky" feel that a
+    static tint couldn't give. */
+.brand-banner::after
+{
+    content: '';
+    position: absolute;
+    top: -40%;
+    bottom: -40%;
+    left: 0;
+    right: 0;
+    z-index: 0;
+    pointer-events: none;
+    animation: sun-traverse 60s linear infinite;
+    background-image: radial-gradient(
+        circle at 0% 50%,
+        rgba(255, 220, 150, 0.85) 0%,
+        rgba(255, 180, 110, 0.55) 6%,
+        rgba(255, 140,  80, 0.30) 12%,
+        rgba(255, 120,  90, 0.10) 22%,
+        transparent 35%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    mix-blend-mode: screen;
+    filter: blur(2px);
+}
+
 .brand-icon
 {
     position: relative;
@@ -198,12 +247,8 @@ header h1
     text-align: center;
 }
 
-/*  Ambient sun lighting effect: a translucent layer that cycles
-    colours from deep night through dawn, noon, sunset and back to
-    midnight, over a 60-second loop. Sits at z-index 0 so foreground
-    content (icon, footer links) reads on top. Shared by the icon
-    banner and the footer bookend.                                  */
-.brand-banner::before,
+/*  Footer bookend keeps the legacy single-colour ambient cycle,
+    sized for a narrow strip where a moving sun would look noisy. */
 .footer-glow::before
 {
     content: '';
@@ -229,6 +274,44 @@ header h1
     84%  { background-color: rgba( 90,  45,  90, 0.30); }  /* dusk purple */
     92%  { background-color: rgba( 35,  35,  65, 0.33); }  /* night blue */
     100% { background-color: rgba( 20,  30,  55, 0.35); }  /* loop back to midnight */
+}
+
+/*  Sky gradient cycle synced to sun-traverse below: same 60 s loop,
+    same key timing. Top-of-sky stop carries the dramatic colour
+    shifts, the lower stops stay desaturated so the icon never sits
+    on a solid wash that would fight the moving sun.                */
+@keyframes sky-gradient
+{
+    0%, 100% { background: linear-gradient(to bottom, rgba( 10,  18,  45, 0.85), rgba( 25,  30,  60, 0.55) 55%, rgba( 35,  35,  75, 0.40)); }  /* deep night */
+    8%       { background: linear-gradient(to bottom, rgba( 28,  22,  60, 0.75), rgba( 60,  35,  80, 0.50) 55%, rgba( 95,  45,  90, 0.35)); }  /* astronomical twilight */
+    16%      { background: linear-gradient(to bottom, rgba( 80,  35,  85, 0.60), rgba(155,  60,  85, 0.45) 55%, rgba(220, 115,  70, 0.30)); }  /* civil twilight, pink horizon */
+    25%      { background: linear-gradient(to bottom, rgba(150,  90, 130, 0.40), rgba(220, 140,  90, 0.30) 55%, rgba(255, 180, 100, 0.20)); }  /* sunrise glow */
+    35%      { background: linear-gradient(to bottom, rgba( 90, 140, 200, 0.30), rgba(180, 200, 220, 0.20) 55%, rgba(245, 225, 180, 0.15)); }  /* morning blue */
+    50%      { background: linear-gradient(to bottom, rgba( 60, 120, 210, 0.32), rgba(150, 195, 230, 0.18) 55%, rgba(250, 240, 210, 0.10)); }  /* noon clear sky */
+    65%      { background: linear-gradient(to bottom, rgba( 95, 145, 200, 0.30), rgba(195, 195, 215, 0.22) 55%, rgba(245, 215, 165, 0.18)); }  /* afternoon */
+    75%      { background: linear-gradient(to bottom, rgba(160, 100, 130, 0.45), rgba(225, 130,  80, 0.35) 55%, rgba(245, 165,  90, 0.30)); }  /* sunset orange */
+    84%      { background: linear-gradient(to bottom, rgba( 70,  40,  85, 0.65), rgba(120,  55,  90, 0.50) 55%, rgba(165,  75,  95, 0.40)); }  /* dusk magenta */
+    92%      { background: linear-gradient(to bottom, rgba( 25,  30,  65, 0.78), rgba( 45,  40,  80, 0.55) 55%, rgba( 60,  45,  85, 0.40)); }  /* nautical twilight */
+}
+
+/*  Sun-disc traverse: a radial halo placed at 0% in the keyframe
+    image, slid right via background-position so it crosses the
+    banner once per 60 s loop. We also fade its opacity so the disc
+    only "exists" during daylight hours (sunrise -> sunset), going
+    invisible through the night portion. Matches sky-gradient.       */
+@keyframes sun-traverse
+{
+    0%     { background-position:   0% 50%; opacity: 0.00; }   /* midnight, no sun */
+    16%    { background-position:   0% 50%; opacity: 0.00; }   /* still dark, sun hidden */
+    20%    { background-position:   2% 70%; opacity: 0.30; }   /* sunrise, sun low + warm */
+    25%    { background-position:  12% 60%; opacity: 0.55; }   /* climbing, redder */
+    35%    { background-position:  28% 45%; opacity: 0.80; }   /* morning, brighter + cooler */
+    50%    { background-position:  50% 38%; opacity: 1.00; }   /* noon: high + brightest */
+    65%    { background-position:  72% 45%; opacity: 0.85; }   /* afternoon */
+    75%    { background-position:  88% 60%; opacity: 0.65; }   /* sunset, dipping + warming */
+    80%    { background-position:  98% 70%; opacity: 0.35; }   /* horizon, fading */
+    84%    { background-position: 100% 80%; opacity: 0.00; }   /* gone below */
+    100%   { background-position: 100% 80%; opacity: 0.00; }   /* night, no sun */
 }
 
 .brand-strip-text
@@ -928,11 +1011,58 @@ button
     min-height: 120px;
 }
 
-/*  Community signals strip. Two anonymous totals (active card
-    installs in the last 30 days + all-time pipeline conversions).
-    Sits between the trailer + the screenshot gallery, side-by-
-    side on desktop, stacked on narrow viewports. The numbers are
-    the headline; the label below is a one-line caption. */
+/*  Theme toggle for the live demo card above. Sits flush below
+    the demo, a horizontal two-button pill so readers can flip the
+    embedded card's theme in real time without scrolling away. */
+.about-theme-toggle
+{
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin: 12px 0 0;
+    padding: 4px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    width: max-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+.theme-btn
+{
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: var(--ink-soft);
+    padding: 8px 22px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+}
+.theme-btn:hover
+{
+    color: var(--ink);
+}
+.theme-btn.is-active
+{
+    background: var(--accent);
+    color: #fff;
+}
+.theme-btn:focus-visible
+{
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/*  Community signals strip. Two public totals: latest-version
+    Helios card downloads (with a hover tooltip listing the per-
+    version split) + all-time pipeline conversions. Sits below
+    the demo, side-by-side on desktop, stacked on narrow
+    viewports. The numbers are the headline; the label below is
+    a one-line caption. */
 .about-community
 {
     display: flex;
@@ -950,6 +1080,11 @@ button
     display: flex;
     flex-direction: column;
     gap: 2px;
+    position: relative;
+}
+.about-community-stat--has-tooltip
+{
+    cursor: help;
 }
 .about-community-number
 {
@@ -966,10 +1101,56 @@ button
     line-height: 1.3;
 }
 
+/*  Hover tooltip listing per-version download counts. Positioned
+    just above the stat box, fades in on hover / focus, hidden by
+    default. The `[hidden]` attribute is removed by app.js once the
+    API populates it so the tooltip never appears empty.          */
+.about-community-tooltip
+{
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    z-index: 5;
+    min-width: 220px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    font-size: 13px;
+    line-height: 1.45;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 140ms ease;
+}
+.about-community-tooltip-title
+{
+    font-weight: 600;
+    margin-bottom: 6px;
+    opacity: 0.85;
+}
+.about-community-tooltip-row
+{
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-variant-numeric: tabular-nums;
+}
+.about-community-tooltip-row + .about-community-tooltip-row
+{
+    margin-top: 2px;
+}
+.about-community-stat--has-tooltip:hover .about-community-tooltip,
+.about-community-stat--has-tooltip:focus-within .about-community-tooltip
+{
+    opacity: 1;
+    pointer-events: auto;
+}
+
 
 .about-link-row
 {
-    margin: 4px 0 0;
+    margin: 18px 0 0;
     text-align: right;
     font-size: 14px;
     display: flex;

@@ -50,18 +50,31 @@
             instead of watching a recording. demo-mount.js (loaded
             via app.js) appends a <helios-card> to this slot.    -->
       <div class="about-demo-wrap" id="demo-card-wrap"></div>
-      <!--  Community signals. Two anonymous counters fed by the
-            VPS: distinct Helios card installs that pinged in the
-            last 30 days, and the all-time count of successful
-            pipeline conversions through helios-lidar.org. The
-            values render with `--` until the JS fetches them, so
-            the layout doesn't shift after page load.            -->
+      <!--  Theme toggle for the live demo card above. Drives the
+            embedded card's `card-theme` config in real time so
+            readers can compare both looks side by side without
+            scrolling away.                                       -->
+      <div class="about-theme-toggle" id="about-theme-toggle" role="radiogroup" aria-label="Demo card theme">
+        <button type="button" class="theme-btn is-active" role="radio" aria-checked="true" data-theme="dark" data-i18n="themeToggleDark">Dark</button>
+        <button type="button" class="theme-btn"          role="radio" aria-checked="false" data-theme="light" data-i18n="themeToggleLight">Light</button>
+      </div>
+      <!--  Community signals. Two public totals: cumulative
+            downloads of the latest Helios card release on GitHub
+            (with a hover tooltip listing the per-version split,
+            fed by `/api/helios-downloads`), and the all-time
+            count of successful pipeline conversions through
+            helios-lidar.org. The values render with `--` until the
+            JS fetches them, so the layout doesn't shift on load. -->
       <div class="about-community" id="about-community">
-        <div class="about-community-stat" id="about-community-installs">
-          <span class="about-community-number" data-stat="installs">,</span>
-          <span class="about-community-label" data-i18n="communityInstalls">
-            Helios cards running on dashboards right now
+        <div class="about-community-stat about-community-stat--has-tooltip" id="about-community-downloads">
+          <span class="about-community-number" data-stat="downloads">,</span>
+          <span class="about-community-label" data-i18n="communityDownloads" data-stat-label="downloads-label">
+            downloads of the latest Helios card release
           </span>
+          <!--  Tooltip filled in by app.js once the API responds.
+                Stays display:none until populated, so it never
+                pops up empty.                                    -->
+          <div class="about-community-tooltip" id="downloads-tooltip" hidden></div>
         </div>
         <div class="about-community-stat" id="about-community-conversions">
           <span class="about-community-number" data-stat="conversions">,</span>

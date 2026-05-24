@@ -515,19 +515,20 @@ function sleep(ms)
 }
 
 
-//Community-counter loader. Two anonymous totals fed by the VPS:
-//distinct Helios card installs that pinged in the last 30 days,
-//and the all-time count of successful pipeline conversions. The
-//HTML reserves the slot with a "," placeholder; we swap in the
-//real value once the fetch returns. A failure is silent: the
-//placeholder stays + we don't surface an error to the user, the
-//counters are a flavour element, not a critical UI piece.
+//Community-counter loader. Two public totals fed by the VPS:
+//cumulative GitHub downloads of the latest Helios card release
+//(with a hover-revealed per-version breakdown sourced from the
+//GitHub Releases API proxy), and the all-time count of successful
+//pipeline conversions. The HTML reserves each slot with a ","
+//placeholder; we swap in the real value once the fetch returns.
+//A failure is silent: the placeholder stays + we don't surface an
+//error, the counters are a flavour element, not a critical UI
+//piece.
 async function loadCommunityStats()
 {
     const fmt = (n) =>
     {
         if (!Number.isFinite(n)) return ',';
-        //Locale-aware grouping (1 234 in fr, 1,234 in en, ...).
         try { return n.toLocaleString(); }
         catch (_) { return String(n); }
     };
@@ -538,14 +539,15 @@ async function loadCommunityStats()
     };
     try
     {
-        const [installsResp, conversionsResp] = await Promise.all([
-            fetch('/api/install-count',     { credentials: 'omit' }),
+        const [downloadsResp, conversionsResp] = await Promise.all([
+            fetch('/api/helios-downloads',  { credentials: 'omit' }),
             fetch('/api/conversions-count', { credentials: 'omit' }),
         ]);
-        if (installsResp.ok)
+        if (downloadsResp.ok)
         {
-            const data = await installsResp.json();
-            setStat('installs', data.count);
+            const data = await downloadsResp.json();
+            setStat('downloads', data.latest_downloads);
+            renderDownloadsTooltip(data);
         }
         if (conversionsResp.ok)
         {
@@ -556,6 +558,63 @@ async function loadCommunityStats()
     catch (_) { /* silent: counters are flavour, not critical */ }
 }
 
+//Populate the per-version download tooltip from the API payload.
+//Stays hidden when the API returned an empty `by_version` array,
+//so the tooltip never appears as a blank box on first load when
+//the cache is cold and GitHub is unreachable.
+function renderDownloadsTooltip(data)
+{
+    const tip = document.getElementById('downloads-tooltip');
+    if (!tip || !data || !Array.isArray(data.by_version) || data.by_version.length === 0) return;
+    const fmt = (n) =>
+    {
+        if (!Number.isFinite(n)) return '-';
+        try { return n.toLocaleString(); }
+        catch (_) { return String(n); }
+    };
+    const titleKey = 'downloadsTooltipTitle';
+    const title = (TRANSLATIONS[activeLang] && TRANSLATIONS[activeLang][titleKey])
+        || 'Downloads per version';
+
+    const rows = data.by_version.map((r) =>
+    {
+        const tag      = String(r.tag || '').replace(/[<>&]/g, '');
+        const count    = fmt(r.downloads);
+        return `<div class="about-community-tooltip-row"><span>${tag}</span><span>${count}</span></div>`;
+    }).join('');
+
+    tip.innerHTML = `<div class="about-community-tooltip-title">${title}</div>${rows}`;
+    tip.hidden = false;
+}
+
+//Demo card theme toggle. Two-button pill below the embedded
+//<helios-card>. The Dark button starts active (matches the demo's
+//initial `card-theme: dark`); clicking either button flips both
+//the visual active state on the buttons and the live card theme
+//via the demo handle's setTheme().
+function wireDemoThemeToggle()
+{
+    const toggle = document.getElementById('about-theme-toggle');
+    if (!toggle || !heliosDemoHandle) return;
+    const buttons = Array.from(toggle.querySelectorAll('.theme-btn'));
+    buttons.forEach((btn) =>
+    {
+        btn.addEventListener('click', () =>
+        {
+            const theme = btn.dataset.theme;
+            if (theme !== 'light' && theme !== 'dark') return;
+            buttons.forEach((b) =>
+            {
+                const isActive = (b === btn);
+                b.classList.toggle('is-active', isActive);
+                b.setAttribute('aria-checked', isActive ? 'true' : 'false');
+            });
+            heliosDemoHandle.setTheme(theme);
+        });
+    });
+}
+
 //Fire as soon as the DOM is parsed. The fetch piggy-backs on the
 //main script's module-load, no extra HTTP round-trip.
 loadCommunityStats();
+wireDemoThemeToggle();

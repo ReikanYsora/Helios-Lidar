@@ -23,9 +23,9 @@
 //     disagree with what users see in HACS), then mount one
 //     <helios-card> inside the supplied host element.
 //
-//Exports a single `mountHeliosDemo({ hostEl, onLanguageHandle })`
-//helper. `onLanguageHandle` is an optional callback the host can
-//use to forward locale changes from its own language switcher to
+//Exports a single `mountHeliosDemo({ hostEl, initialLang })` helper
+//that returns a handle `{ setLanguage, setTheme }` the host page
+//uses to forward language + theme changes from its switchers to
 //the embedded card.
 
 const HELIOS_BUNDLE_URL = 'https://cdn.jsdelivr.net/gh/ReikanYsora/Helios@v1.6.3/dist/helios.js';
@@ -182,7 +182,26 @@ export function mountHeliosDemo({ hostEl, initialLang })
     refreshSyntheticState();
     const mockHass = buildMockHass(initialLang || 'en');
     let card = null;
-    let pendingLang = mockHass.language;
+    let pendingLang  = mockHass.language;
+    let pendingTheme = 'dark';
+    const cfg = {
+        type: 'custom:helios-card',
+        'auto-rotate-enabled':     false,
+        'pv-power-entity':         'sensor.demo_pv_power',
+        'pv-peak-kwp':             DEMO_PEAK_KWP,
+        'battery-soc-entity':      'sensor.demo_battery_soc',
+        'battery-power-entity':    'sensor.demo_battery_power',
+        'map-style':               'streets',
+        'show-labels':             true,
+        'building-radius':         250,
+        'lidar-precision':         'medium',
+        'building-opacity':        0.25,
+        'building-cluster-radius': 5,
+        'shadow-opacity':          0.45,
+        'card-theme':              pendingTheme,
+        'timeline-enabled':        true,
+        'timeline-width-pct':      100,
+    };
 
     const handle = {
         setLanguage(lang)
@@ -193,34 +212,31 @@ export function mountHeliosDemo({ hostEl, initialLang })
             mockHass.locale   = { ...mockHass.locale, language: lang };
             if (card) card.hass = { ...mockHass, states: currentStates() };
         },
+        setTheme(theme)
+        {
+            if (theme !== 'light' && theme !== 'dark') return;
+            if (theme === pendingTheme) return;
+            pendingTheme = theme;
+            cfg['card-theme'] = theme;
+            //Re-applying the config triggers a Lit re-render and the
+            //card swaps its CSS variable stack + basemap style. The
+            //live `hass` reassignment refreshes the readouts in step
+            //so chips don't flicker stale on theme flip.
+            if (card)
+            {
+                card.setConfig({ ...cfg });
+                card.hass = { ...mockHass, states: currentStates() };
+            }
+        },
     };
 
     import(HELIOS_BUNDLE_URL).then(() =>
     {
         card = document.createElement('helios-card');
-        card.setConfig({
-            type: 'custom:helios-card',
-            //Auto-rotate off in the demo so the initial composition
-            //stays stable while readers explore the chips. They can
-            //still drag / pinch the map manually.
-            'auto-rotate-enabled':  false,
-            'pv-power-entity':      'sensor.demo_pv_power',
-            'pv-peak-kwp':          DEMO_PEAK_KWP,
-            'battery-soc-entity':   'sensor.demo_battery_soc',
-            'battery-power-entity': 'sensor.demo_battery_power',
-            'map-style':            'streets',
-            'show-labels':          true,
-            'building-radius':      250,
-            'lidar-precision':      'medium',
-            'building-opacity':     0.7,
-            'shadow-opacity':       0.45,
-            'card-theme':           'dark',
-            'timeline-enabled':     true,
-            'timeline-width-pct':   100,
-            //Demo cards never want to phone home for analytics, the
-            //landing page already runs its own anonymous counter.
-            'helios-anon-stats':    false,
-        });
+        //Auto-rotate stays off so the initial composition is stable
+        //while readers explore the chips; they can still drag /
+        //pinch manually.
+        card.setConfig({ ...cfg });
         card.hass = { ...mockHass, language: pendingLang };
         hostEl.appendChild(card);
 

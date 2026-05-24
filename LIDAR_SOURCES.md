@@ -18,6 +18,10 @@ proof the source actually feeds the pipeline.
   Tile picker at
   [geoservices.ign.fr/services-page-lidar-hd](https://geoservices.ign.fr/services-page-lidar-hd).
 * **Switzerland**, [swissSURFACE3D](https://www.swisstopo.admin.ch/en/geodata/height/surface3d.html).
+  Tile picker at
+  [swisstopo.admin.ch/en/height-model-swisssurface3d#download](https://www.swisstopo.admin.ch/en/height-model-swisssurface3d#download)
+  (pick a 1 km² tile, choose "Original (LAS / LAZ)", and feed the
+  resulting `.copc.laz` URL into helios-lidar.org).
 * **Netherlands**, [AHN](https://www.ahn.nl/).
 * **Spain**, [IGN PNOA-LiDAR](https://centrodedescargas.cnig.es/CentroDescargas/buscador-de-productos?productoCNIG=LIDAR).
 * **UK (England)**, [Environment Agency LiDAR Composite](https://environment.data.gov.uk/survey).
