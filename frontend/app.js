@@ -246,25 +246,21 @@ els.errorRestart.addEventListener('click', resetUi);
 els.copyButton.addEventListener('click', async () =>
 {
     const text = els.resultSnippet.textContent;
+    const dict = TRANSLATIONS[activeLang] || TRANSLATIONS.en;
+    const idleLabel = dict.copyButton || TRANSLATIONS.en.copyButton || 'Copy to clipboard';
     try
     {
         await navigator.clipboard.writeText(text);
-        //Flip the button into its "done" state. The CSS class swaps
-        //the visible glyph from the clipboard icon to the checkmark
-        //and re-tints it accent-yellow. Reverts after ~1.2 s.
-        els.copyButton.classList.add('is-copied');
+        els.copyButton.textContent = dict.copied || 'Copied!';
         setTimeout(() =>
         {
-            els.copyButton.classList.remove('is-copied');
-        }, 1200);
+            els.copyButton.textContent = idleLabel;
+        }, 1500);
     }
     catch (_err)
     {
-        els.copyButton.classList.add('is-failed');
-        setTimeout(() =>
-        {
-            els.copyButton.classList.remove('is-failed');
-        }, 1800);
+        els.copyButton.textContent = 'Copy failed, select manually';
+        setTimeout(() => { els.copyButton.textContent = idleLabel; }, 2500);
     }
 });
 

@@ -304,19 +304,9 @@
           <li data-i18n="howto3">Reload the dashboard. Real LiDAR shadows should appear
             around your home.</li>
         </ol>
-        <!--  The YAML snippet block carries its own copy icon in the
-              top-right corner, replacing the previous standalone
-              "Copy to clipboard" button. Clicking the icon copies
-              the snippet text + flips to a checkmark briefly.       -->
-        <div class="snippet-wrap">
-          <pre class="snippet" id="result-snippet"></pre>
-          <button type="button" class="snippet-copy" id="copy-snippet" aria-label="Copy snippet" title="Copy to clipboard">
-            <!--  Unicode clipboard glyph (U+1F4CB). Emoji always
-                  renders, no matter what; the JS swap toggles the
-                  textContent to a check (U+2714) on success.     -->
-            <span class="snippet-copy-glyph snippet-copy-glyph--idle" aria-hidden="true">📋</span>
-            <span class="snippet-copy-glyph snippet-copy-glyph--done" aria-hidden="true">✔</span>
-          </button>
+        <pre class="snippet" id="result-snippet"></pre>
+        <div class="action-row">
+          <button type="button" class="copy-button" id="copy-snippet" data-i18n="copyButton">Copy to clipboard</button>
         </div>
       </div>
     </section>
