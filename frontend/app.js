@@ -126,6 +126,10 @@ function switchLang(lang)
     //"no file selected" in the previous locale; reapply now so the
     //translated placeholder shows up instead of the stale one.
     refreshFilenameSlots();
+    //Re-render the templated downloads label so it picks up the
+    //new locale's "({tag})" wording instead of staying stuck on
+    //the locale active at fetch time.
+    renderDownloadsLabel();
     //Forward the locale change to the embedded Helios card so its
     //own i18n tree picks up the new language for chip labels +
     //tooltip strings.
@@ -515,6 +519,31 @@ function sleep(ms)
 }
 
 
+//Latest tag from the most recent /api/helios-downloads response.
+//Kept at module scope so a language switch can re-render the
+//templated stat label without firing the fetch again.
+let cachedLatestTag = null;
+
+//Render the "downloads of Helios card (vX.Y.Z)" label by stitching
+//the cached latest tag into the active locale's template. Falls
+//back to the non-templated `communityDownloads` string when the
+//API hasn't responded yet (or returned no tag), so the slot never
+//goes blank.
+function renderDownloadsLabel()
+{
+    const labelEl = document.querySelector('[data-stat-label="downloads-label"]');
+    if (!labelEl) return;
+    const dict = TRANSLATIONS[activeLang] || TRANSLATIONS.en;
+    if (cachedLatestTag && typeof dict.communityDownloadsWithVersion === 'string')
+    {
+        labelEl.textContent = dict.communityDownloadsWithVersion.replace('{tag}', cachedLatestTag);
+    }
+    else if (typeof dict.communityDownloads === 'string')
+    {
+        labelEl.textContent = dict.communityDownloads;
+    }
+}
+
 //Community-counter loader. Two public totals fed by the VPS:
 //cumulative GitHub downloads of the latest Helios card release
 //(with a hover-revealed per-version breakdown sourced from the
@@ -546,13 +575,12 @@ async function loadCommunityStats()
         if (downloadsResp.ok)
         {
             const data = await downloadsResp.json();
-            //Total across every release. The latest-version count is
-            //fragile (GitHub resets it on every asset re-upload when
-            //a tag gets force-moved on a release-build workflow), so
-            //we surface the cumulative number instead and reserve the
-            //per-version split for the hover tooltip.
-            setStat('downloads', data.total_downloads);
+            setStat('downloads', data.latest_downloads);
             renderDownloadsTooltip(data);
+            //Cache the tag so a language switch can re-render the
+            //templated label without re-fetching the API.
+            cachedLatestTag = data.latest_tag || null;
+            renderDownloadsLabel();
         }
         if (conversionsResp.ok)
         {

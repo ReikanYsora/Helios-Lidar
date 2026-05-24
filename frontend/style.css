@@ -1034,12 +1034,17 @@ button
     background: transparent;
     border: 0;
     color: var(--ink-soft);
+    /*  Fixed min-width keeps the two halves identical regardless
+        of the active locale's label length (Dark / Light vs.
+        Dunkel / Hell vs. Chiaro / Scuro etc.).                  */
+    min-width: 96px;
     padding: 8px 22px;
     font: inherit;
     font-size: 14px;
     font-weight: 600;
     border-radius: 999px;
     cursor: pointer;
+    text-align: center;
     transition: background 120ms ease, color 120ms ease;
 }
 .theme-btn:hover

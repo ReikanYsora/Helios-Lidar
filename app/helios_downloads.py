@@ -47,6 +47,20 @@ MAX_RESPONSE_BYTES = 1024 * 1024
 
 HTTP_TIMEOUT_SECONDS = 10
 
+#One-time correction baselines added on top of whatever GitHub
+#reports for a given tag. Lets us preserve a historical download
+#total when the release-asset workflow had to re-upload the bundle
+#and GitHub reset that asset's download_count to zero (an asset
+#counter is reset on every delete + re-upload, with no API to seed
+#it back). Each entry is a "+N" baseline: the real GitHub count is
+#summed on top so a tag that keeps getting downloaded after the
+#correction still increments past the baseline naturally.
+MANUAL_BASELINES: dict[str, int] = {
+    #v1.6.3 had 151 downloads before the bundle was re-uploaded as
+    #part of a same-tag content refresh; counter reset to 0 then.
+    "v1.6.3": 151,
+}
+
 
 class ReleaseDownload(NamedTuple):
     tag: str
@@ -107,6 +121,7 @@ def _fetch_fresh() -> HeliosDownloadsSnapshot:
             count = asset.get("download_count")
             if isinstance(count, int) and count >= 0:
                 downloads += count
+        downloads += MANUAL_BASELINES.get(tag, 0)
         rows.append(ReleaseDownload(tag=tag, downloads=downloads))
 
     #GitHub returns releases in published-at descending order already,
