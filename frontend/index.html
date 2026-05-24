@@ -311,17 +311,11 @@
         <div class="snippet-wrap">
           <pre class="snippet" id="result-snippet"></pre>
           <button type="button" class="snippet-copy" id="copy-snippet" aria-label="Copy snippet" title="Copy to clipboard">
-            <!--  Solid-fill clipboard glyph (two overlapping rounded
-                  rects). fill on the <svg> root + no stroke so the
-                  shape always paints, no matter what surrounding
-                  CSS resets do to children.                        -->
-            <svg class="snippet-copy-icon snippet-copy-icon--idle" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false" style="display:block">
-              <path d="M16 2H6a2 2 0 0 0-2 2v12h2V4h10V2zm3 4H10a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm0 14h-9V8h9v12z"/>
-            </svg>
-            <!--  Solid checkmark for the "copied" state. -->
-            <svg class="snippet-copy-icon snippet-copy-icon--done" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false" style="display:none">
-              <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-            </svg>
+            <!--  Unicode clipboard glyph (U+1F4CB). Emoji always
+                  renders, no matter what; the JS swap toggles the
+                  textContent to a check (U+2714) on success.     -->
+            <span class="snippet-copy-glyph snippet-copy-glyph--idle" aria-hidden="true">📋</span>
+            <span class="snippet-copy-glyph snippet-copy-glyph--done" aria-hidden="true">✔</span>
           </button>
         </div>
       </div>
