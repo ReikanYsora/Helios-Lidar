@@ -177,13 +177,13 @@ function buildMockHass(initialLang)
 //changes from its language switcher to the embedded card. The
 //handle's setLanguage is a no-op until the bundle finishes
 //loading; calls made earlier are coalesced into the initial mount.
-export function mountHeliosDemo({ hostEl, initialLang })
+export function mountHeliosDemo({ hostEl, initialLang, initialTheme })
 {
     refreshSyntheticState();
     const mockHass = buildMockHass(initialLang || 'en');
     let card = null;
     let pendingLang  = mockHass.language;
-    let pendingTheme = 'dark';
+    let pendingTheme = (initialTheme === 'light' || initialTheme === 'dark') ? initialTheme : 'dark';
     const cfg = {
         type: 'custom:helios-card',
         'auto-rotate-enabled':     false,

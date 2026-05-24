@@ -149,7 +149,11 @@ let heliosDemoHandle = null;
 const demoWrap = document.getElementById('demo-card-wrap');
 if (demoWrap)
 {
-    heliosDemoHandle = mountHeliosDemo({ hostEl: demoWrap, initialLang: activeLang });
+    heliosDemoHandle = mountHeliosDemo({
+        hostEl:       demoWrap,
+        initialLang:  activeLang,
+        initialTheme: getSavedTheme(),
+    });
 }
 
 function tFilename(input)
@@ -606,10 +610,39 @@ async function loadCommunityStats()
         try { return n.toLocaleString(); }
         catch (_) { return String(n); }
     };
+    //Animate the stat number from 0 -> target over ~2 s with an
+    //ease-out so the count-up decelerates as it approaches the
+    //final figure. Each frame computes the integer value to display
+    //so the digits tick one-by-one (for small targets) or in tight
+    //bursts (for large ones). Falls back to a static write when the
+    //value isn't a finite positive number.
+    const COUNT_UP_DURATION_MS = 2000;
     const setStat = (key, value) =>
     {
         const el = document.querySelector('[data-stat="' + key + '"]');
-        if (el) el.textContent = fmt(value);
+        if (!el) return;
+        if (!Number.isFinite(value) || value <= 0)
+        {
+            el.textContent = fmt(value);
+            return;
+        }
+        const target = Math.round(value);
+        const start  = performance.now();
+        let last     = -1;
+        const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+        const frame = (now) =>
+        {
+            const t = Math.min(1, (now - start) / COUNT_UP_DURATION_MS);
+            const current = Math.floor(easeOut(t) * target);
+            if (current !== last)
+            {
+                el.textContent = fmt(current);
+                last = current;
+            }
+            if (t < 1) requestAnimationFrame(frame);
+            else el.textContent = fmt(target);
+        };
+        requestAnimationFrame(frame);
     };
     try
     {
@@ -635,15 +668,50 @@ async function loadCommunityStats()
     catch (_) { /* silent: counters are flavour, not critical */ }
 }
 
-//Demo card theme toggle. Two-button pill below the embedded
-//<helios-card>. The Dark button starts active (matches the demo's
-//initial `card-theme: dark`); clicking either button flips both
-//the visual active state on the buttons and the live card theme
-//via the demo handle's setTheme().
+//Site theme: a single source of truth that drives both the body's
+//`data-theme` attribute (which switches the CSS variable palette,
+//see :root + body[data-theme="light"] in style.css) AND the demo
+//card's `card-theme` config so the embedded card stays in lock-
+//step with the page surrounding it. Persisted to localStorage so
+//the visitor's choice survives reloads + cross-tab navigations.
+const THEME_STORAGE_KEY = 'helios-lidar-site-theme';
+
+function getSavedTheme()
+{
+    try
+    {
+        const saved = localStorage.getItem(THEME_STORAGE_KEY);
+        if (saved === 'light' || saved === 'dark') return saved;
+    }
+    catch (_) { /* private mode etc */ }
+    return 'dark';
+}
+
+function applySiteTheme(theme)
+{
+    if (theme !== 'light' && theme !== 'dark') return;
+    document.body.setAttribute('data-theme', theme);
+    try { localStorage.setItem(THEME_STORAGE_KEY, theme); }
+    catch (_) { /* private mode etc */ }
+    //Forward to the embedded demo card so it follows the site.
+    if (heliosDemoHandle) heliosDemoHandle.setTheme(theme);
+    //Sync the toggle's visual active state in case the call came
+    //from somewhere other than a button click (e.g. initial load).
+    document.querySelectorAll('#about-theme-toggle .theme-btn').forEach((b) =>
+    {
+        const isActive = (b.dataset.theme === theme);
+        b.classList.toggle('is-active', isActive);
+        b.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    });
+}
+
+//Demo card theme toggle. Two-button pill below the embedded card;
+//each button delegates to applySiteTheme so the toggle drives the
+//whole site palette in one shot, not just the embedded demo.
 function wireDemoThemeToggle()
 {
     const toggle = document.getElementById('about-theme-toggle');
-    if (!toggle || !heliosDemoHandle) return;
+    if (!toggle) return;
     const buttons = Array.from(toggle.querySelectorAll('.theme-btn'));
     buttons.forEach((btn) =>
     {
@@ -651,16 +719,18 @@ function wireDemoThemeToggle()
         {
             const theme = btn.dataset.theme;
             if (theme !== 'light' && theme !== 'dark') return;
-            buttons.forEach((b) =>
-            {
-                const isActive = (b === btn);
-                b.classList.toggle('is-active', isActive);
-                b.setAttribute('aria-checked', isActive ? 'true' : 'false');
-            });
-            heliosDemoHandle.setTheme(theme);
+            applySiteTheme(theme);
         });
     });
 }
+
+//Apply the saved theme as early as possible so the page paints in
+//the right palette from the first frame. heliosDemoHandle may not
+//be ready yet at this point; applySiteTheme tolerates a missing
+//handle and the demo picks up the theme via its own initial
+//config inside demo-mount.js.
+const _initialTheme = getSavedTheme();
+applySiteTheme(_initialTheme);
 
 //Fire as soon as the DOM is parsed. The fetch piggy-backs on the
 //main script's module-load, no extra HTTP round-trip.

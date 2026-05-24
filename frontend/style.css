@@ -22,6 +22,52 @@
     --border:       rgba(255, 255, 255, 0.20);
     --border-soft:  rgba(255, 255, 255, 0.08);
     --code-bg:      #0a0c0e;
+    /*  Subtle hover wash, polarity-aware. Dark theme nudges
+        surfaces lighter (white at low alpha), light theme nudges
+        them darker (black at low alpha). Used by snippet-copy
+        button, mode-tab hover, etc., so the same component reads
+        consistently in both palettes without per-theme overrides
+        scattered across the sheet.                              */
+    --hover-wash:        rgba(255, 255, 255, 0.07);
+    --hover-wash-strong: rgba(255, 255, 255, 0.14);
+    /*  Lang-strip background: kept near-white in both themes so
+        the top navigation row reads consistently across palettes.
+        Overridden in light theme to the same near-white but pinned
+        to the variable so future tweaks stay one-line edits.    */
+    --lang-strip-bg:     #f4f5f7;
+    --lang-strip-border: #d8dadd;
+    --lang-strip-ink:    #51565d;
+}
+
+/*  Light theme: mirrors the dark palette with surfaces pulled to
+    near-white and ink pushed to near-black. Triggered by the body
+    attribute `data-theme="light"`; the demo card's theme toggle
+    flips that attribute so the whole site follows the embedded
+    card's appearance.                                            */
+:root, body[data-theme="dark"]
+{
+    color-scheme: dark;
+}
+body[data-theme="light"]
+{
+    color-scheme: light;
+    --bg:           #f6f7f9;
+    --surface:      #ffffff;
+    --surface-2:    #eef0f3;
+    --ink:          #1a1c20;
+    --ink-soft:     #51565d;
+    --accent:       #d68812;
+    --accent-soft:  #f4a93c;
+    --success:      #1f9d4a;
+    --danger:       #c0392b;
+    --border:       rgba(0, 0, 0, 0.12);
+    --border-soft:  rgba(0, 0, 0, 0.06);
+    --code-bg:      #f0f1f4;
+    --hover-wash:        rgba(0, 0, 0, 0.04);
+    --hover-wash-strong: rgba(0, 0, 0, 0.08);
+    --lang-strip-bg:     #ffffff;
+    --lang-strip-border: #d8dadd;
+    --lang-strip-ink:    #51565d;
 }
 
 *
@@ -169,8 +215,8 @@ header h1
     z-index: 30;
     width: 100%;
     padding: 8px 24px;
-    background-color: #f4f5f7;
-    border-bottom: 1px solid #d8dadd;
+    background-color: var(--lang-strip-bg);
+    border-bottom: 1px solid var(--lang-strip-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -191,7 +237,7 @@ header h1
 {
     display: inline-flex;
     align-items: center;
-    color: #51565d;
+    color: var(--lang-strip-ink);
     transition: color 120ms ease, transform 120ms ease;
 }
 .repo-link:hover
@@ -210,7 +256,7 @@ header h1
 {
     font-size: 11px;
     letter-spacing: 0.5px;
-    color: #51565d;
+    color: var(--lang-strip-ink);
     font-family: ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
@@ -229,6 +275,16 @@ header h1
     pointer-events: none;
     display: block;
     background-color: var(--bg);
+}
+
+/*  The pointcloud canvas + edge blur strips are baked for the
+    dark palette (dark grey lattice on near-black background).
+    Hide them in light theme: a clean white page reads better than
+    a dark canvas struggling under a bright UI.                  */
+body[data-theme="light"] .bg-pointcloud,
+body[data-theme="light"] .bg-blur
+{
+    display: none;
 }
 
 /*  Edge blur strips: two fixed overlays that sit above the canvas
@@ -1355,8 +1411,8 @@ button
         so the button reads as actionable without waiting for hover.
         Previously the empty hover-only state made the icon look
         absent on the dark code background.                         */
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: var(--hover-wash);
+    border: 1px solid var(--border);
     border-radius: 6px;
     color: var(--ink);
     cursor: pointer;
@@ -1364,7 +1420,7 @@ button
 }
 .snippet-copy:hover
 {
-    background: rgba(255, 255, 255, 0.14);
+    background: var(--hover-wash-strong);
     border-color: var(--accent);
     color: var(--accent);
 }
