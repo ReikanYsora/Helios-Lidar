@@ -30,12 +30,12 @@
       <div class="brand-strip">
         <span class="brand-strip-text" data-i18n="brandStrip">
           A 3D solar card for
-          <a href="https://www.home-assistant.io/" target="_blank" rel="noopener">Home Assistant</a>, with the LiDAR conversion service it needs
+          <a href="https://www.home-assistant.io/" target="_blank" rel="noopener">Home Assistant</a>, and the tool that feeds it your LiDAR data
         </span>
       </div>
       <h1 data-i18n="siteTitle">Helios</h1>
       <p class="lede" data-i18n="lede">
-        A 3D Lovelace card for Home Assistant that paints live sun position, cloud cover, real cast shadows from buildings and trees and a self-learning PV forecast on a MapLibre map of your home. This site converts your raw LiDAR data into a file the card can read, in regions the built-in providers don't reach yet.
+        A 3D Lovelace card for Home Assistant that paints live sun position, cloud cover, real cast shadows from buildings and trees and a self-learning PV forecast on a MapLibre map of your home. This site supplies the card with the LiDAR data it needs in regions the built-in providers don't reach yet.
       </p>
     </header>
 
@@ -304,9 +304,18 @@
           <li data-i18n="howto3">Reload the dashboard. Real LiDAR shadows should appear
             around your home.</li>
         </ol>
-        <pre class="snippet" id="result-snippet"></pre>
-        <div class="action-row">
-          <button type="button" class="copy-button" id="copy-snippet" data-i18n="copyButton">Copy to clipboard</button>
+        <!--  The YAML snippet block carries its own copy icon in the
+              top-right corner, replacing the previous standalone
+              "Copy to clipboard" button. Clicking the icon copies
+              the snippet text + flips to a checkmark briefly.       -->
+        <div class="snippet-wrap">
+          <pre class="snippet" id="result-snippet"></pre>
+          <button type="button" class="snippet-copy" id="copy-snippet" aria-label="Copy snippet" title="Copy to clipboard">
+            <!--  Two-sheets clipboard glyph (default state). -->
+            <svg class="snippet-copy-icon snippet-copy-icon--idle" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></g></svg>
+            <!--  Checkmark glyph (shown for ~1.2 s after a successful copy). -->
+            <svg class="snippet-copy-icon snippet-copy-icon--done" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12l5 5L20 7"/></svg>
+          </button>
         </div>
       </div>
     </section>

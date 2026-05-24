@@ -241,15 +241,22 @@ els.copyButton.addEventListener('click', async () =>
     try
     {
         await navigator.clipboard.writeText(text);
-        els.copyButton.textContent = 'Copied!';
+        //Flip the button into its "done" state. The CSS class swaps
+        //the visible glyph from the clipboard icon to the checkmark
+        //and re-tints it accent-yellow. Reverts after ~1.2 s.
+        els.copyButton.classList.add('is-copied');
         setTimeout(() =>
         {
-            els.copyButton.textContent = 'Copy to clipboard';
-        }, 1500);
+            els.copyButton.classList.remove('is-copied');
+        }, 1200);
     }
     catch (_err)
     {
-        els.copyButton.textContent = 'Copy failed, select manually';
+        els.copyButton.classList.add('is-failed');
+        setTimeout(() =>
+        {
+            els.copyButton.classList.remove('is-failed');
+        }, 1800);
     }
 });
 

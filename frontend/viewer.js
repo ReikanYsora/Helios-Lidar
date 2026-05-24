@@ -246,7 +246,7 @@ async function buildSession(canvas, cogUrl, loading, stats)
     //rather than the whole footprint floating in dead space.
     //OrbitControls lets the user pull further out and orbit if
     //they want.
-    const fitDistance = Math.max(width * cellSizeX, height * cellSizeY) * 0.65;
+    const fitDistance = Math.max(width * cellSizeX, height * cellSizeY) * 0.32;
     camera.position.set(fitDistance * 0.55, fitDistance * 1.2, fitDistance * 0.55);
     controls.target.set(0, Math.max(0.1, maxHeight * 0.2), 0);
     controls.minDistance = Math.max(width, height) * cellSizeX * 0.05;
