@@ -1535,6 +1535,25 @@ footer .sep
     color: var(--border);
 }
 
+/*  Footer link rows: each anchor pairs a small inline icon with
+    its label so the row reads at a glance (GitHub mark for the
+    code repos, envelope for the mailto). Color follows the same
+    accent on hover as the rest of the footer.                    */
+.footer-link
+{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    vertical-align: middle;
+}
+.footer-link-icon
+{
+    width: 16px;
+    height: 16px;
+    display: block;
+    flex-shrink: 0;
+}
+
 .bmc-row
 {
     margin-top: 14px;
