@@ -22,15 +22,28 @@ import * as THREE from 'https://esm.sh/three@0.169.0';
 
 const GRID = 160;
 const CELL = 1.6;
-const POINT_COLOR = 0x3a3f46;
 const POINT_SIZE_PX = 1.2;
 const POINT_OPACITY = 0.55;
-const WIRE_COLOR = 0x2b3036;
 const WIRE_OPACITY = 0.30;
 const BG_COLOR = 0x0b0d10;
 const FOG_NEAR = 60;
 const FOG_FAR  = 180;
 const ROTATION_SPEED_RAD_PER_SEC = 0.035;
+
+//Per-vertex colour ramp from "low ground" to "high apex". Low end
+//matches the existing dark-grey wash so valley floors stay subtle;
+//high end is the page's --accent yellow so ridges and rooftops
+//catch the eye in the same colour as the text headings. Pre-
+//multiplied as 0..1 RGB triples to avoid per-vertex conversion in
+//the lerp loop.
+const COLOR_LOW  = { r: 0x3a / 255, g: 0x3f / 255, b: 0x46 / 255 };  /* 0x3a3f46 */
+const COLOR_HIGH = { r: 0xf5 / 255, g: 0xa6 / 255, b: 0x23 / 255 };  /* 0xf5a623, matches --accent */
+//Height bounds for the colour normalisation. terrainHeight() ranges
+//~[-13, +13]; buildings stamp up to ~+20 on top of that. We clamp
+//inside [HEIGHT_LOW, HEIGHT_HIGH] so the gradient hits its endpoint
+//colours on the tallest stacked features rather than averaging out.
+const HEIGHT_LOW  = -10;
+const HEIGHT_HIGH =  18;
 
 function init()
 {
@@ -64,22 +77,27 @@ function init()
     const points = new THREE.Points(
         geometry,
         new THREE.PointsMaterial({
-            color: POINT_COLOR,
+            //White base lets the per-vertex colour come through pure;
+            //the multiply happens at the shader, so any non-white
+            //base would dim the warm highs we want to read clearly.
+            color: 0xffffff,
             size: POINT_SIZE_PX,
             sizeAttenuation: false,
             transparent: true,
             opacity: POINT_OPACITY,
             depthWrite: false,
+            vertexColors: true,
             fog: true,
         }),
     );
     const wireframe = new THREE.LineSegments(
         buildWireframeFromGrid(geometry, GRID),
         new THREE.LineBasicMaterial({
-            color: WIRE_COLOR,
+            color: 0xffffff,
             transparent: true,
             opacity: WIRE_OPACITY,
             depthWrite: false,
+            vertexColors: true,
             fog: true,
         }),
     );
@@ -159,9 +177,16 @@ function buildSyntheticTerrain()
 
     const N = GRID + 1;
     const positions = new Float32Array(N * N * 3);
+    //Parallel colour buffer, one RGB triple per vertex, painted by
+    //lerping COLOR_LOW -> COLOR_HIGH based on the vertex's height.
+    //Building rooftops and ridge crests land on the warm end; valley
+    //floors stay in the dark base tone.
+    const colors    = new Float32Array(N * N * 3);
     const half = (GRID * CELL) / 2;
+    const heightSpan = HEIGHT_HIGH - HEIGHT_LOW;
 
     let i = 0;
+    let c = 0;
     for (let gz = 0; gz < N; gz++)
     {
         const z = gz * CELL - half;
@@ -178,10 +203,18 @@ function buildSyntheticTerrain()
             positions[i++] = x;
             positions[i++] = h;
             positions[i++] = z;
+
+            let t = (h - HEIGHT_LOW) / heightSpan;
+            if (t < 0) t = 0;
+            else if (t > 1) t = 1;
+            colors[c++] = COLOR_LOW.r + (COLOR_HIGH.r - COLOR_LOW.r) * t;
+            colors[c++] = COLOR_LOW.g + (COLOR_HIGH.g - COLOR_LOW.g) * t;
+            colors[c++] = COLOR_LOW.b + (COLOR_HIGH.b - COLOR_LOW.b) * t;
         }
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    g.setAttribute('color',    new THREE.BufferAttribute(colors,    3));
     return g;
 }
 
@@ -215,6 +248,10 @@ function buildWireframeFromGrid(pointsGeometry, gridN)
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', pointsGeometry.getAttribute('position'));
+    //Share the per-vertex colour ramp with the wireframe so a line
+    //segment crossing a hill blends naturally from dark base to warm
+    //top instead of staying a flat grey.
+    g.setAttribute('color',    pointsGeometry.getAttribute('color'));
     g.setIndex(new THREE.BufferAttribute(indices, 1));
     return g;
 }

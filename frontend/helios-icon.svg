@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" role="img" aria-label="Helios">
+  <defs>
+    <!-- Sun fill: a soft top-to-bottom gradient mimicking the original's
+         warm core fading to deeper orange near the horizon line. -->
+    <linearGradient id="sunFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#ffe27a"/>
+      <stop offset="55%"  stop-color="#f9be36"/>
+      <stop offset="100%" stop-color="#ec8a18"/>
+    </linearGradient>
+    <!-- Ray fill: slightly more saturated than the sun core so the rays
+         read against the sky around them without competing with the disc. -->
+    <linearGradient id="rayFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#ffcb3e"/>
+      <stop offset="100%" stop-color="#f29c19"/>
+    </linearGradient>
+    <!-- Bottom dome fill: deep blue-black so the HA monogram pops. -->
+    <linearGradient id="domeFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#0e1422"/>
+      <stop offset="100%" stop-color="#1c2238"/>
+    </linearGradient>
+    <!-- HA letter fill: bright cyan-to-blue, matches the original. -->
+    <linearGradient id="haFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#6fd5ff"/>
+      <stop offset="100%" stop-color="#1f8fd6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Geometry centred at (240, 200). Disc radius 100. Horizon line y=200. -->
+  <g transform="translate(240 200)">
+
+    <!-- 11 triangular rays around the top half of the disc. Each ray is a
+         narrow isoceles triangle whose apex sits at the disc rim. We tilt
+         them by varying the rotation angle so they fan above the horizon
+         without overlapping the dome. -->
+    <g fill="url(#rayFill)" stroke="#b86a09" stroke-width="1.2" stroke-linejoin="round">
+      <g transform="rotate(-90)"><polygon points="0,-205 -14,-115 14,-115"/></g>
+      <g transform="rotate(-72)"><polygon points="0,-185 -12,-115 12,-115"/></g>
+      <g transform="rotate(-54)"><polygon points="0,-200 -13,-115 13,-115"/></g>
+      <g transform="rotate(-36)"><polygon points="0,-180 -11,-115 11,-115"/></g>
+      <g transform="rotate(-18)"><polygon points="0,-195 -12,-115 12,-115"/></g>
+      <g transform="rotate(0)"  ><polygon points="0,-170 -10,-115 10,-115"/></g>
+      <g transform="rotate(18)" ><polygon points="0,-195 -12,-115 12,-115"/></g>
+      <g transform="rotate(36)" ><polygon points="0,-180 -11,-115 11,-115"/></g>
+      <g transform="rotate(54)" ><polygon points="0,-200 -13,-115 13,-115"/></g>
+      <g transform="rotate(72)" ><polygon points="0,-185 -12,-115 12,-115"/></g>
+      <g transform="rotate(90)" ><polygon points="0,-205 -14,-115 14,-115"/></g>
+    </g>
+
+    <!-- Sun disc. Drawn as a full circle then visually cropped by the
+         dome on top of it; keeps the outline anti-aliasing perfect. -->
+    <circle r="100" fill="url(#sunFill)" stroke="#b86a09" stroke-width="2"/>
+
+    <!-- Bottom dome: a semicircle covering the lower half of the disc and
+         flush with the disc's outline. Holds the HA monogram. -->
+    <path d="M -110 0 A 110 110 0 0 0 110 0 Z" fill="url(#domeFill)"/>
+
+    <!-- HA monogram. The original glyph has bracket-like outer flourishes
+         around the H and A. We approximate that with a sans-serif H A
+         flanked by two thin half-circle "brackets". -->
+    <g transform="translate(0 28)" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="800" font-size="74" text-anchor="middle" fill="url(#haFill)" stroke="#0a3b5c" stroke-width="1.5" paint-order="stroke">
+      <text x="0" y="0" letter-spacing="-2">HA</text>
+    </g>
+
+    <!-- Two bracket arcs hugging the HA, evoking the original's curved
+         outer strokes on each letter. -->
+    <g fill="none" stroke="url(#haFill)" stroke-width="6" stroke-linecap="round">
+      <path d="M -88 -8 Q -100 28 -78 56"/>
+      <path d="M  88 -8 Q  100 28  78 56"/>
+    </g>
+
+  </g>
+</svg>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Helios-Lidar , LiDAR to nDSM converter</title>
-  <link rel="icon" type="image/png" href="/static/helios-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/static/helios-icon.svg">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
   <main>
     <header>
       <div class="brand-banner">
-        <img src="/static/helios-icon.png" alt="Helios" class="brand-icon">
+        <img src="/static/helios-icon.svg" alt="Helios" class="brand-icon">
       </div>
       <div class="brand-strip">
         <span class="brand-strip-text" data-i18n="brandStrip">
@@ -55,8 +55,16 @@
             readers can compare both looks side by side without
             scrolling away.                                       -->
       <div class="about-theme-toggle" id="about-theme-toggle" role="radiogroup" aria-label="Demo card theme">
-        <button type="button" class="theme-btn is-active" role="radio" aria-checked="true" data-theme="dark" data-i18n="themeToggleDark">Dark</button>
-        <button type="button" class="theme-btn"          role="radio" aria-checked="false" data-theme="light" data-i18n="themeToggleLight">Light</button>
+        <button type="button" class="theme-btn is-active" role="radio" aria-checked="true" data-theme="dark">
+          <!--  Crescent moon glyph for the dark theme. -->
+          <svg class="theme-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
+          <span data-i18n="themeToggleDark">Dark</span>
+        </button>
+        <button type="button" class="theme-btn"          role="radio" aria-checked="false" data-theme="light">
+          <!--  Sun glyph for the light theme. -->
+          <svg class="theme-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g></svg>
+          <span data-i18n="themeToggleLight">Light</span>
+        </button>
       </div>
       <!--  Community signals. Two public totals: cumulative
             downloads of the latest Helios card release on GitHub
@@ -66,21 +74,25 @@
             helios-lidar.org. The values render with `--` until the
             JS fetches them, so the layout doesn't shift on load. -->
       <div class="about-community" id="about-community">
-        <div class="about-community-stat about-community-stat--has-tooltip" id="about-community-downloads">
-          <span class="about-community-number" data-stat="downloads">,</span>
-          <span class="about-community-label" data-i18n="communityDownloads" data-stat-label="downloads-label">
-            downloads of the latest Helios card release
-          </span>
-          <!--  Tooltip filled in by app.js once the API responds.
-                Stays display:none until populated, so it never
-                pops up empty.                                    -->
-          <div class="about-community-tooltip" id="downloads-tooltip" hidden></div>
+        <div class="about-community-stat" id="about-community-downloads">
+          <!--  Down-arrow into a tray for "download". -->
+          <svg class="about-community-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/></svg>
+          <div class="about-community-stat-body">
+            <span class="about-community-number" data-stat="downloads">,</span>
+            <span class="about-community-label" data-i18n="communityDownloads" data-stat-label="downloads-label">
+              downloads of the latest Helios card release
+            </span>
+          </div>
         </div>
         <div class="about-community-stat" id="about-community-conversions">
-          <span class="about-community-number" data-stat="conversions">,</span>
-          <span class="about-community-label" data-i18n="communityConversions">
-            LiDAR conversions processed through this pipeline
-          </span>
+          <!--  Stylised "in -> COG out" arrow stack for conversion. -->
+          <svg class="about-community-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h11l-3-3M20 17H9l3 3"/></g></svg>
+          <div class="about-community-stat-body">
+            <span class="about-community-number" data-stat="conversions">,</span>
+            <span class="about-community-label" data-i18n="communityConversions">
+              LiDAR conversions processed through this pipeline
+            </span>
+          </div>
         </div>
       </div>
       <p class="about-link-row">
@@ -184,6 +196,9 @@
       <details class="help-block">
         <summary data-i18n="helpDownload">Where do I download LiDAR data for my country?</summary>
         <div class="help-content">
+          <p class="data-sources-intro" data-i18n="dataSourcesIntro">
+            For each country, this section points at a national open-data portal where you can grab the raw LAZ point cloud or the DSM + DTM raster pair, which the pipeline then converts into a Helios-ready nDSM Cloud-Optimized GeoTIFF.
+          </p>
           <div class="data-sources-content" id="data-sources-content" data-i18n="dataSourcesLoading">
             Loading the country list...
           </div>
@@ -255,7 +270,7 @@
     </section>
 
     <section class="card hidden" id="status-section">
-      <h2 data-i18n="workingH2">2. Working...</h2>
+      <h2 id="working-h2" data-i18n="workingH2">2. Working...</h2>
 
       <div class="progress-row">
         <label class="progress-label" data-i18n="uploadLabel">Upload</label>
@@ -343,12 +358,14 @@
         machine. You upload, wait a minute, download.
       </p>
       <p class="hosting-note" data-i18n="hostingNote">
-        Helios-Lidar runs on a small VPS I rent from OVH and pay for
-        myself. There are no ads on this page, none planned, and the
-        service is free for everyone. I want to keep it as simple as
-        possible. If you find the tool useful, the Buy Me a Coffee
-        button at the bottom helps keep the VPS bill covered. Thanks!
+        Helios-Lidar runs on a server I rent from OVH and pay for, every
+        month, out of my own pocket. There are no ads on this page, and
+        there will never be, unless I can no longer fund the server
+        otherwise. If you enjoy the site and the card, can afford it,
+        and would like to support me, a donation of any amount is always
+        welcome.
       </p>
+      <p class="thanks-line" data-i18n="thanks">Thank you!</p>
       <p class="credits" data-i18n="credits">
         The bring-your-own local-nDSM provider in the Helios card and the
         Python preparation toolchain this pipeline is built on top of were
@@ -362,10 +379,10 @@
 
   <footer class="footer-glow">
     <div class="footer-inner">
-      <a href="https://github.com/ReikanYsora/Helios-Lidar" target="_blank" rel="noopener">Source</a>
-      <span class="sep">,</span>
-      <a href="/helios-card">Helios card</a>
-      <span class="sep">,</span>
+      <a href="https://github.com/ReikanYsora/Helios-Lidar" target="_blank" rel="noopener" data-i18n="footerSource">Source</a>
+      <span class="sep">&mdash;</span>
+      <a href="/helios-card" data-i18n="footerHeliosCard">Helios card</a>
+      <span class="sep">&mdash;</span>
       <a href="mailto:jcremoux@gmail.com" data-i18n="contactMe">Contact me</a>
       <div class="bmc-row">
         <a href="https://www.buymeacoffee.com/reikanysora" target="_blank" rel="noopener">

@@ -866,6 +866,30 @@ button
         that just makes the panel noisy.                            */
 }
 
+/*  Intro paragraph that sits above the server-rendered country
+    list. Mirrors the explainer-paragraph tone of the rest of the
+    page.                                                           */
+.data-sources-intro
+{
+    margin: 0 0 12px;
+    font-size: 14px;
+    line-height: 1.55;
+    opacity: 0.9;
+}
+
+/*  Standalone "Thank you!" line between the hosting-note and the
+    credits. Centered, slightly larger so the gratitude lands
+    clearly without competing with the surrounding paragraphs.    */
+.thanks-line
+{
+    margin: 8px 0 12px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.2px;
+}
+
 .data-sources-content h1,
 .data-sources-content h2
 {
@@ -993,15 +1017,25 @@ button
     /*  Fixed min-width keeps the two halves identical regardless
         of the active locale's label length (Dark / Light vs.
         Dunkel / Hell vs. Chiaro / Scuro etc.).                  */
-    min-width: 96px;
-    padding: 8px 22px;
+    min-width: 110px;
+    padding: 8px 18px;
     font: inherit;
     font-size: 14px;
     font-weight: 600;
     border-radius: 999px;
     cursor: pointer;
     text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     transition: background 120ms ease, color 120ms ease;
+}
+.theme-btn-icon
+{
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
 }
 .theme-btn:hover
 {
@@ -1039,13 +1073,10 @@ button
 {
     flex: 1 1 220px;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
     position: relative;
-}
-.about-community-stat--has-tooltip
-{
-    cursor: help;
 }
 .about-community-number
 {
@@ -1062,50 +1093,23 @@ button
     line-height: 1.3;
 }
 
-/*  Hover tooltip listing per-version download counts. Positioned
-    just above the stat box, fades in on hover / focus, hidden by
-    default. The `[hidden]` attribute is removed by app.js once the
-    API populates it so the tooltip never appears empty.          */
-.about-community-tooltip
+/*  Icon glyph paired with each community stat (download arrow,
+    convert arrows). Inline SVG so colour follows --accent without
+    extra fetches. Sits on the left of the number + label stack.   */
+.about-community-icon
 {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 0;
-    z-index: 5;
-    min-width: 220px;
-    padding: 10px 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-    font-size: 13px;
-    line-height: 1.45;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 140ms ease;
+    width: 28px;
+    height: 28px;
+    color: var(--accent);
+    flex-shrink: 0;
+    align-self: center;
 }
-.about-community-tooltip-title
-{
-    font-weight: 600;
-    margin-bottom: 6px;
-    opacity: 0.85;
-}
-.about-community-tooltip-row
+.about-community-stat-body
 {
     display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    font-variant-numeric: tabular-nums;
-}
-.about-community-tooltip-row + .about-community-tooltip-row
-{
-    margin-top: 2px;
-}
-.about-community-stat--has-tooltip:hover .about-community-tooltip,
-.about-community-stat--has-tooltip:focus-within .about-community-tooltip
-{
-    opacity: 1;
-    pointer-events: auto;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
 }
 
 
@@ -1224,11 +1228,29 @@ button
     margin-bottom: 6px;
 }
 
+/*  bbox / pitch / source-CRS meta line, sits between the Download
+    button and the YAML snippet. Wrapped as a small monospace code
+    block so the technical readout reads as data, not running text,
+    and centred so it doesn't drift below the button awkwardly.    */
 .result-meta
 {
+    display: block;
+    margin: 10px auto;
+    padding: 8px 14px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
     font-size: 12px;
     color: var(--ink-soft);
-    margin-top: 6px;
+    text-align: center;
+    width: max-content;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+.result-meta:empty
+{
+    display: none;
 }
 
 .snippet

@@ -287,6 +287,17 @@ els.form.addEventListener('submit', async (event) =>
     hide(els.resultSection);
     hide(els.errorSection);
     show(els.statusSection);
+    //Reset the section-2 heading + status detail back to the in-
+    //progress state, in case the user just ran a previous job that
+    //flipped it to the "Done" wording.
+    const workingH2 = document.getElementById('working-h2');
+    if (workingH2)
+    {
+        workingH2.setAttribute('data-i18n', 'workingH2');
+        workingH2.textContent = TRANSLATIONS[activeLang]?.workingH2
+            || TRANSLATIONS.en.workingH2
+            || '2. Working...';
+    }
     setUploadProgress(0);
     setProcessProgress(0, 'Uploading...');
     els.statusJobId.textContent = '';
@@ -393,8 +404,31 @@ function setProcessProgress(pct, message)
 
 function showResult(job)
 {
-    hide(els.statusSection);
+    //Keep section 2 visible (no longer hide it) so the page reads as
+    //a clean 1 / 2 / 3 progression after completion instead of
+    //jumping from 1 straight to 3. Flip its heading to a "Done"
+    //wording and pin both progress bars at 100 % so the section
+    //settles into a completed state rather than a frozen-in-progress
+    //one.
+    show(els.statusSection);
     show(els.resultSection);
+    const workingH2 = document.getElementById('working-h2');
+    const doneLabel = TRANSLATIONS[activeLang]?.workingH2Done
+        || TRANSLATIONS.en.workingH2Done
+        || '2. Done';
+    if (workingH2)
+    {
+        workingH2.textContent = doneLabel;
+        workingH2.setAttribute('data-i18n', 'workingH2Done');
+    }
+    els.uploadFill.style.width  = '100%';
+    els.processFill.style.width = '100%';
+    els.uploadPct.textContent  = '100 %';
+    els.processPct.textContent = '100 %';
+    const doneMsg = TRANSLATIONS[activeLang]?.statusDoneMessage
+        || TRANSLATIONS.en.statusDoneMessage
+        || 'Conversion complete.';
+    if (els.statusMessage) els.statusMessage.textContent = doneMsg;
 
     const filename = job.download_filename || `helios-ndsm-${job.job_id}.tif`;
     els.downloadButton.textContent = `Download ${filename}`;
@@ -576,7 +610,6 @@ async function loadCommunityStats()
         {
             const data = await downloadsResp.json();
             setStat('downloads', data.latest_downloads);
-            renderDownloadsTooltip(data);
             //Cache the tag so a language switch can re-render the
             //templated label without re-fetching the API.
             cachedLatestTag = data.latest_tag || null;
@@ -589,35 +622,6 @@ async function loadCommunityStats()
         }
     }
     catch (_) { /* silent: counters are flavour, not critical */ }
-}
-
-//Populate the per-version download tooltip from the API payload.
-//Stays hidden when the API returned an empty `by_version` array,
-//so the tooltip never appears as a blank box on first load when
-//the cache is cold and GitHub is unreachable.
-function renderDownloadsTooltip(data)
-{
-    const tip = document.getElementById('downloads-tooltip');
-    if (!tip || !data || !Array.isArray(data.by_version) || data.by_version.length === 0) return;
-    const fmt = (n) =>
-    {
-        if (!Number.isFinite(n)) return '-';
-        try { return n.toLocaleString(); }
-        catch (_) { return String(n); }
-    };
-    const titleKey = 'downloadsTooltipTitle';
-    const title = (TRANSLATIONS[activeLang] && TRANSLATIONS[activeLang][titleKey])
-        || 'Downloads per version';
-
-    const rows = data.by_version.map((r) =>
-    {
-        const tag      = String(r.tag || '').replace(/[<>&]/g, '');
-        const count    = fmt(r.downloads);
-        return `<div class="about-community-tooltip-row"><span>${tag}</span><span>${count}</span></div>`;
-    }).join('');
-
-    tip.innerHTML = `<div class="about-community-tooltip-title">${title}</div>${rows}`;
-    tip.hidden = false;
 }
 
 //Demo card theme toggle. Two-button pill below the embedded
