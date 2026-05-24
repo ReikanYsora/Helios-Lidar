@@ -280,14 +280,6 @@ header h1
     background-color: var(--bg);
 }
 
-/*  Edge blur strips read as atmosphere only on the dark palette
-    where there's a textured pointcloud behind them to soften;
-    on the flat light surface they just look like a blurred white
-    bar, hide them.                                                */
-html[data-theme="light"] .bg-blur
-{
-    display: none;
-}
 
 /*  Edge blur strips: two fixed overlays that sit above the canvas
     and below the page content, applying a backdrop-filter blur
