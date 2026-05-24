@@ -114,15 +114,15 @@ header h1
     align-items: center;
 }
 
-/*  Sky layer: a single static vertical sky gradient (deep blue at
-    altitude, cyan mid, warm horizon) recoloured over time via a
-    hue-rotate + brightness cycle. Hue-rotate sweeps the whole
-    gradient through every sky colour smoothly, brightness dims the
-    night portion. No blend modes, no overlay, no moving radial:
-    the previous moving-sun + screen-blend combo strobed visibly on
-    every cycle because the radial gradient kept entering / leaving
-    a low-alpha state on top of the gradient base. Single layer
-    keeps the loop calm and unmistakably sky-shaped.                */
+/*  Sky layer: two stacked gradients on a single pseudo-element so
+    the banner reads instantly as a sky scene without animation.
+    Bottom layer is a vertical day-sky ramp (deep cobalt high up
+    -> light periwinkle mid-altitude -> warm peach near the horizon
+    -> deeper coral at the bottom). Top layer is a soft radial sun
+    glow anchored to the right, mimicking a low-angle sun about to
+    light the foreground icon from the side. Static (no animation)
+    so the banner is calm and the sun never wanders into the icon
+    or strobes against the gradient base.                          */
 .brand-banner::before
 {
     content: '';
@@ -130,14 +130,17 @@ header h1
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    animation: sky-cycle 90s linear infinite;
-    background: linear-gradient(
-        to bottom,
-        #1c2c4e 0%,
-        #3a6aa3 38%,
-        #f8b86a 82%,
-        #d97c4d 100%
-    );
+    background-image:
+        radial-gradient(ellipse 60% 80% at 88% 70%,
+            rgba(255, 215, 130, 0.70) 0%,
+            rgba(255, 175,  95, 0.45) 18%,
+            rgba(255, 140,  80, 0.20) 35%,
+            transparent 60%),
+        linear-gradient(to bottom,
+            #1f3a72  0%,
+            #4f7bb6 35%,
+            #f3c08e 78%,
+            #d9764a 100%);
 }
 
 .brand-icon
@@ -312,23 +315,6 @@ header h1
     100% { background-color: rgba( 20,  30,  55, 0.35); }  /* loop back to midnight */
 }
 
-/*  Sky cycle: rotate the gradient through hue space while dipping
-    the brightness at night. One filter property, no opacity, no
-    blend modes => no overlapping layers to strobe against each
-    other. The hue-rotate sweep takes the base "deep blue -> warm
-    horizon" gradient through every plausible sky colour (dawn pink,
-    noon blue, sunset orange, twilight purple) over the loop.       */
-@keyframes sky-cycle
-{
-    0%   { filter: hue-rotate(  0deg) saturate(0.85) brightness(0.45); }  /* midnight */
-    20%  { filter: hue-rotate(-20deg) saturate(1.10) brightness(0.75); }  /* dawn */
-    35%  { filter: hue-rotate(-10deg) saturate(0.95) brightness(1.05); }  /* morning */
-    50%  { filter: hue-rotate(  0deg) saturate(0.90) brightness(1.15); }  /* noon */
-    65%  { filter: hue-rotate( 15deg) saturate(1.00) brightness(1.05); }  /* afternoon */
-    80%  { filter: hue-rotate( 30deg) saturate(1.20) brightness(0.80); }  /* sunset */
-    100% { filter: hue-rotate(  0deg) saturate(0.85) brightness(0.45); }  /* loop back to midnight */
-}
-
 .brand-strip-text
 {
     text-align: center;
@@ -343,34 +329,44 @@ header h1
 .lang-switcher
 {
     display: flex;
-    gap: 4px;
     flex-shrink: 0;
 }
 
-.lang-flag
+/*  Language picker, single native <select> with "flag + name" per
+    option. Compact, mobile-friendly, no row of buttons to wrap.   */
+.lang-select
 {
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    padding: 2px 5px;
-    font-size: 16px;
-    line-height: 1;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background: #ffffff;
+    color: #1a1c20;
+    border: 1px solid #d8dadd;
+    border-radius: 6px;
+    padding: 4px 26px 4px 8px;
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.2;
     cursor: pointer;
-    opacity: 0.55;
-    transition: opacity 0.15s, border-color 0.15s, background 0.15s;
+    max-width: 180px;
+    /*  Tiny down-chevron rendered as a CSS background image so the
+        select reads as a dropdown without a native arrow on every
+        platform.                                                  */
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%2351565d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 10px 7px;
+    transition: border-color 0.15s, box-shadow 0.15s;
 }
-
-.lang-flag:hover
+.lang-select:hover
 {
-    opacity: 1;
-    background: rgba(0, 0, 0, 0.06);
+    border-color: #a8aab0;
 }
-
-.lang-flag.active
+.lang-select:focus-visible
 {
-    opacity: 1;
+    outline: none;
     border-color: var(--accent);
-    background: rgba(245, 166, 35, 0.15);
+    box-shadow: 0 0 0 2px rgba(245, 166, 35, 0.25);
 }
 
 h1
@@ -1058,10 +1054,10 @@ button
     display: flex;
     justify-content: center;
     gap: 0;
-    /*  Sits flush with the section's top padding, no extra
-        breathing room above so the toggle reads as part of the
-        demo cluster rather than a floating control.            */
-    margin: 0 auto 12px;
+    /*  Pulled tight against the section's top edge via a negative
+        margin so the toggle reads as part of the demo cluster
+        with the minimum breathing room above.                    */
+    margin: -8px auto 12px;
     padding: 4px;
     background: var(--surface-2);
     border: 1px solid var(--border);
@@ -1207,12 +1203,11 @@ button
     display: flex;
     justify-content: center;
     align-items: center;
-    /*  Symmetric vertical margins so the badge sits visually
-        centred between the stats card above and the section's
-        bottom padding below. Drop the previous 8 / 24 imbalance
-        that pinned it to the top of its available space.       */
-    margin: 24px auto;
-    padding: 4px 0;
+    /*  Tight symmetric vertical margins so the badge sits close
+        to both the stats card above and the section bottom edge
+        below, without floating in dead space.                   */
+    margin: 16px auto -8px;
+    padding: 0;
 }
 .hass-open-btn
 {
@@ -1349,25 +1344,29 @@ button
 .snippet-copy
 {
     position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 30px;
-    height: 30px;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
-    border: 1px solid transparent;
+    /*  Always-visible chip: light translucent surface + soft border
+        so the button reads as actionable without waiting for hover.
+        Previously the empty hover-only state made the icon look
+        absent on the dark code background.                         */
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 6px;
-    color: var(--ink-soft);
+    color: var(--ink);
     cursor: pointer;
     transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 .snippet-copy:hover
 {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: var(--border);
-    color: var(--ink);
+    background: rgba(255, 255, 255, 0.14);
+    border-color: var(--accent);
+    color: var(--accent);
 }
 .snippet-copy:focus-visible
 {
@@ -1376,14 +1375,20 @@ button
 }
 .snippet-copy-icon
 {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     display: block;
 }
 .snippet-copy-icon--done
 {
     display: none;
     color: var(--accent);
+}
+.snippet-copy.is-copied
+{
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(245, 166, 35, 0.18);
 }
 .snippet-copy.is-copied .snippet-copy-icon--idle
 {
@@ -1396,6 +1401,7 @@ button
 .snippet-copy.is-failed
 {
     color: var(--danger, #d9534f);
+    border-color: var(--danger, #d9534f);
 }
 
 /*  3D viewer (Three.js canvas + overlays)                            */
@@ -1409,6 +1415,12 @@ button
     border: 1px solid var(--border);
     border-radius: 4px;
     overflow: hidden;
+    /*  Block the browser from swallowing touch drags for page
+        scrolling / pinch-zoom so OrbitControls can actually receive
+        the touchmove events and orbit / zoom the 3D scene. Without
+        this the preview canvas stays frozen on phones because every
+        finger drag scrolls the page instead.                        */
+    touch-action: none;
 }
 
 #viewer-canvas
@@ -1416,6 +1428,18 @@ button
     display: block;
     width: 100%;
     height: 100%;
+    touch-action: none;
+}
+
+@media (max-width: 560px)
+{
+    .viewer-wrap
+    {
+        /*  Shorter canvas on phones so the preview tile leaves room
+            below it for the YAML snippet + download button without
+            forcing the user to scroll past a half-screen of 3D.    */
+        height: 360px;
+    }
 }
 
 .viewer-loading
@@ -1725,17 +1749,16 @@ code
     h1 { font-size: 26px; }
     .card { padding: 16px; }
 
-    /*  Compact the lang strip so it doesn't dominate the top of a
-        phone screen; flags get a touch smaller and the row hugs the
-        right edge tighter.                                          */
+    /*  Compact the lang strip on phones so it doesn't dominate the
+        top of the screen.                                           */
     .lang-strip
     {
         padding: 6px 12px;
     }
-    .lang-flag
+    .lang-select
     {
-        font-size: 14px;
-        padding: 2px 4px;
+        font-size: 12px;
+        max-width: 150px;
     }
 
     /*  Mode toggle: on phones a 50/50 pill with 14 px text + 20 px

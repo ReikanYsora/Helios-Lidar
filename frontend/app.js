@@ -94,22 +94,26 @@ async function fetchAndInjectLidarSources()
     }
 }
 
+//Language picker: native <select> with "flag + language name" per
+//option. Scales to any number of locales without overflowing the
+//lang-strip on narrow viewports (the previous flag-button row
+//wrapped onto a second line on phones once we passed 8 langs).
 const langSwitcher = document.getElementById('lang-switcher');
 if (langSwitcher)
 {
+    const select = document.createElement('select');
+    select.className = 'lang-select';
+    select.setAttribute('aria-label', 'Language');
     SUPPORTED_LANGS.forEach((lang) =>
     {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'lang-flag';
-        btn.dataset.lang = lang;
-        btn.title = LANG_LABELS[lang];
-        btn.setAttribute('aria-label', LANG_LABELS[lang]);
-        btn.textContent = LANG_FLAGS[lang];
-        if (lang === activeLang) btn.classList.add('active');
-        btn.addEventListener('click', () => switchLang(lang));
-        langSwitcher.appendChild(btn);
+        const opt = document.createElement('option');
+        opt.value = lang;
+        opt.textContent = `${LANG_FLAGS[lang]}  ${LANG_LABELS[lang]}`;
+        if (lang === activeLang) opt.selected = true;
+        select.appendChild(opt);
     });
+    select.addEventListener('change', () => switchLang(select.value));
+    langSwitcher.appendChild(select);
 }
 
 function switchLang(lang)
@@ -118,10 +122,10 @@ function switchLang(lang)
     activeLang = lang;
     persistLang(lang);
     applyTranslations(lang);
-    document.querySelectorAll('.lang-flag').forEach((btn) =>
-    {
-        btn.classList.toggle('active', btn.dataset.lang === lang);
-    });
+    //Sync the picker's selected option in case the switch was
+    //triggered programmatically rather than by the user.
+    const sel = langSwitcher && langSwitcher.querySelector('.lang-select');
+    if (sel && sel.value !== lang) sel.value = lang;
     //Refresh the filename slots since their text was probably
     //"no file selected" in the previous locale; reapply now so the
     //translated placeholder shows up instead of the stale one.
