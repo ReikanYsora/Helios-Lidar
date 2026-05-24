@@ -22,28 +22,30 @@ import * as THREE from 'https://esm.sh/three@0.169.0';
 
 const GRID = 160;
 const CELL = 1.6;
+const POINT_COLOR = 0x3a3f46;
 const POINT_SIZE_PX = 1.2;
 const POINT_OPACITY = 0.55;
+const WIRE_COLOR = 0x2b3036;
 const WIRE_OPACITY = 0.30;
 const BG_COLOR = 0x0b0d10;
 const FOG_NEAR = 60;
 const FOG_FAR  = 180;
 const ROTATION_SPEED_RAD_PER_SEC = 0.035;
 
-//Per-vertex colour ramp from "low ground" to "high apex". Low end
-//matches the existing dark-grey wash so valley floors stay subtle;
-//high end is the page's --accent yellow so ridges and rooftops
-//catch the eye in the same colour as the text headings. Pre-
-//multiplied as 0..1 RGB triples to avoid per-vertex conversion in
-//the lerp loop.
-const COLOR_LOW  = { r: 0x3a / 255, g: 0x3f / 255, b: 0x46 / 255 };  /* 0x3a3f46 */
-const COLOR_HIGH = { r: 0xf5 / 255, g: 0xa6 / 255, b: 0x23 / 255 };  /* 0xf5a623, matches --accent */
-//Height bounds for the colour normalisation. terrainHeight() ranges
-//~[-13, +13]; buildings stamp up to ~+20 on top of that. We clamp
-//inside [HEIGHT_LOW, HEIGHT_HIGH] so the gradient hits its endpoint
-//colours on the tallest stacked features rather than averaging out.
-const HEIGHT_LOW  = -10;
-const HEIGHT_HIGH =  18;
+//Slow ambient breathing of the terrain heights. We layer a low-
+//frequency sine over the static landscape so the lattice gently
+//rises + falls over time without ever leaving its quiet baseline.
+//Frequencies are picked so the wave reads as "the ground is
+//exhaling" rather than as motion: WAVE_AMPLITUDE stays well under
+//the natural relief, WAVE_TIME_FREQ_HZ is sub-Hz so a full breath
+//takes ~25-30 s, and the spatial frequencies are low enough that
+//neighbouring points move almost together, no buzz.
+const WAVE_AMPLITUDE      = 0.55;
+const WAVE_TIME_FREQ_HZ   = 0.035;
+const WAVE_SPACE_FREQ_X   = 0.024;
+const WAVE_SPACE_FREQ_Z   = 0.031;
+const WAVE_TIME_TWO_HZ    = 0.018;
+const WAVE_AMPLITUDE_TWO  = 0.30;
 
 function init()
 {
@@ -73,34 +75,32 @@ function init()
     const root = new THREE.Group();
     scene.add(root);
 
-    const geometry = buildSyntheticTerrain();
+    const { geometry, baseHeights } = buildSyntheticTerrain();
     const points = new THREE.Points(
         geometry,
         new THREE.PointsMaterial({
-            //White base lets the per-vertex colour come through pure;
-            //the multiply happens at the shader, so any non-white
-            //base would dim the warm highs we want to read clearly.
-            color: 0xffffff,
+            color: POINT_COLOR,
             size: POINT_SIZE_PX,
             sizeAttenuation: false,
             transparent: true,
             opacity: POINT_OPACITY,
             depthWrite: false,
-            vertexColors: true,
             fog: true,
         }),
     );
     const wireframe = new THREE.LineSegments(
         buildWireframeFromGrid(geometry, GRID),
         new THREE.LineBasicMaterial({
-            color: 0xffffff,
+            color: WIRE_COLOR,
             transparent: true,
             opacity: WIRE_OPACITY,
             depthWrite: false,
-            vertexColors: true,
             fog: true,
         }),
     );
+    //Mark the position attribute as dynamic so the slow height
+    //breathing in tick() doesn't fight a static-draw upload hint.
+    geometry.attributes.position.setUsage(THREE.DynamicDrawUsage);
     root.add(points);
     root.add(wireframe);
 
@@ -122,7 +122,11 @@ function init()
         return;
     }
 
-    let last = performance.now();
+    const N = GRID + 1;
+    const positionAttr = geometry.attributes.position;
+    const positions = positionAttr.array;
+    const startTime = performance.now();
+    let last = startTime;
     let running = true;
 
     document.addEventListener('visibilitychange', () =>
@@ -140,6 +144,9 @@ function init()
         if (!running) return;
         const dt = (now - last) / 1000;
         last = now;
+        const tSec = (now - startTime) / 1000;
+        applyHeightWave(positions, baseHeights, N, tSec);
+        positionAttr.needsUpdate = true;
         root.rotation.y += ROTATION_SPEED_RAD_PER_SEC * dt;
         renderer.render(scene, camera);
         requestAnimationFrame(tick);
@@ -177,23 +184,22 @@ function buildSyntheticTerrain()
 
     const N = GRID + 1;
     const positions = new Float32Array(N * N * 3);
-    //Parallel colour buffer, one RGB triple per vertex, painted by
-    //lerping COLOR_LOW -> COLOR_HIGH based on the vertex's height.
-    //Building rooftops and ridge crests land on the warm end; valley
-    //floors stay in the dark base tone.
-    const colors    = new Float32Array(N * N * 3);
+    //Snapshot of the static "natural" height per vertex. The tick
+    //loop reads this each frame, adds the slow breathing wave, and
+    //writes the result back into positions, so the static landscape
+    //never drifts away from its sculpted form.
+    const baseHeights = new Float32Array(N * N);
     const half = (GRID * CELL) / 2;
-    const heightSpan = HEIGHT_HIGH - HEIGHT_LOW;
 
     let i = 0;
-    let c = 0;
+    let h = 0;
     for (let gz = 0; gz < N; gz++)
     {
         const z = gz * CELL - half;
         for (let gx = 0; gx < N; gx++)
         {
             const x = gx * CELL - half;
-            let h = terrainHeight(x, z);
+            h = terrainHeight(x, z);
             for (const b of buildings)
             {
                 const dx = x - b.x;
@@ -203,19 +209,12 @@ function buildSyntheticTerrain()
             positions[i++] = x;
             positions[i++] = h;
             positions[i++] = z;
-
-            let t = (h - HEIGHT_LOW) / heightSpan;
-            if (t < 0) t = 0;
-            else if (t > 1) t = 1;
-            colors[c++] = COLOR_LOW.r + (COLOR_HIGH.r - COLOR_LOW.r) * t;
-            colors[c++] = COLOR_LOW.g + (COLOR_HIGH.g - COLOR_LOW.g) * t;
-            colors[c++] = COLOR_LOW.b + (COLOR_HIGH.b - COLOR_LOW.b) * t;
+            baseHeights[gz * N + gx] = h;
         }
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    g.setAttribute('color',    new THREE.BufferAttribute(colors,    3));
-    return g;
+    return { geometry: g, baseHeights };
 }
 
 function buildWireframeFromGrid(pointsGeometry, gridN)
@@ -248,12 +247,37 @@ function buildWireframeFromGrid(pointsGeometry, gridN)
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', pointsGeometry.getAttribute('position'));
-    //Share the per-vertex colour ramp with the wireframe so a line
-    //segment crossing a hill blends naturally from dark base to warm
-    //top instead of staying a flat grey.
-    g.setAttribute('color',    pointsGeometry.getAttribute('color'));
     g.setIndex(new THREE.BufferAttribute(indices, 1));
     return g;
+}
+
+//Per-frame height update: walk every vertex, add a slow two-octave
+//sine wave on top of its baseline elevation, write back the new y.
+//Both Points and LineSegments share the position attribute so a
+//single needsUpdate refreshes both passes. The whole loop is ~26k
+//iterations on the 161x161 lattice; well under a millisecond on
+//any current CPU. positions and baseHeights are captured by the
+//closure in init().
+function applyHeightWave(positions, baseHeights, N, tSec)
+{
+    const tau1 = tSec * (2 * Math.PI) * WAVE_TIME_FREQ_HZ;
+    const tau2 = tSec * (2 * Math.PI) * WAVE_TIME_TWO_HZ;
+    for (let gz = 0; gz < N; gz++)
+    {
+        for (let gx = 0; gx < N; gx++)
+        {
+            const baseY = baseHeights[gz * N + gx];
+            //x and z in world space are already in positions[]; read
+            //them back rather than recomputing from grid indices to
+            //avoid storing the half offset twice.
+            const off = (gz * N + gx) * 3;
+            const x = positions[off];
+            const z = positions[off + 2];
+            const w1 = Math.sin(tau1 + x * WAVE_SPACE_FREQ_X + z * WAVE_SPACE_FREQ_Z) * WAVE_AMPLITUDE;
+            const w2 = Math.sin(tau2 - x * WAVE_SPACE_FREQ_Z + z * WAVE_SPACE_FREQ_X) * WAVE_AMPLITUDE_TWO;
+            positions[off + 1] = baseY + w1 + w2;
+        }
+    }
 }
 
 if (document.readyState === 'loading')

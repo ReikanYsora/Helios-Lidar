@@ -241,10 +241,12 @@ async function buildSession(canvas, cogUrl, loading, stats)
 
     //Camera framing: top-down-ish (camera elevation > horizontal
     //distance) so the layout reads as a map, matching the angle
-    //Helios's LiDAR View overlay uses by default. Pull back so the
-    //whole footprint fits. OrbitControls lets the user drop lower
-    //and orbit if they want.
-    const fitDistance = Math.max(width * cellSizeX, height * cellSizeY) * 1.1;
+    //Helios's LiDAR View overlay uses by default. Pull back enough
+    //that the home + immediate surroundings fill the preview tile,
+    //rather than the whole footprint floating in dead space.
+    //OrbitControls lets the user pull further out and orbit if
+    //they want.
+    const fitDistance = Math.max(width * cellSizeX, height * cellSizeY) * 0.65;
     camera.position.set(fitDistance * 0.55, fitDistance * 1.2, fitDistance * 0.55);
     controls.target.set(0, Math.max(0.1, maxHeight * 0.2), 0);
     controls.minDistance = Math.max(width, height) * cellSizeX * 0.05;

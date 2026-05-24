@@ -198,6 +198,9 @@ header h1
     pointer-events: none;
     display: block;
     background-color: var(--bg);
+    /*  Very light blur so the lattice reads as out-of-focus depth
+        instead of fighting the foreground text for attention.    */
+    filter: blur(1.5px);
 }
 
 /*  Centred tagline strip sitting just under the icon banner. Plain
