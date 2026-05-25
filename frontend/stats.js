@@ -352,7 +352,22 @@ async function loadStats()
         renderDoughnut('chart-referrers', snapshot.referrers);
     }
 
-    Object.keys(histograms).forEach(applyHistogram);
+    //BMaC's API is opaque for now (the only public scope is
+    //"read-only" and our token still returns Unauthenticated as
+    //of May 2026), so hide the donations card until they ship a
+    //usable token flow. We keep the section's markup + backend
+    //wiring intact so a future re-enable is a one-line CSS flip.
+    const donationsSection = document.querySelector('[data-hist="donations"]');
+    if (donationsSection)
+    {
+        donationsSection.style.display = 'none';
+    }
+
+    Object.keys(histograms).forEach((name) =>
+    {
+        if (name === 'donations') return;
+        applyHistogram(name);
+    });
     updateDonationsNote();
 
     const refreshEl = document.getElementById('stats-fetched-at');
