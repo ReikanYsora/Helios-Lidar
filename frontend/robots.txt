@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /jobs
+Disallow: /output/
+
+Sitemap: https://helios-lidar.org/sitemap.xml

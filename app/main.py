@@ -153,6 +153,21 @@ def index() -> JSONResponse:
     )
 
 
+@app.get("/robots.txt")
+def robots_txt() -> FileResponse:
+    """Serve robots.txt at the site root. Crawlers expect this at
+    /robots.txt verbatim, so we route it through FastAPI rather
+    than ask every operator to add a dedicated nginx location."""
+    return FileResponse(FRONTEND_DIR / "robots.txt", media_type="text/plain")
+
+
+@app.get("/sitemap.xml")
+def sitemap_xml() -> FileResponse:
+    """Serve sitemap.xml at the site root, same reasoning as
+    robots.txt: search engines look for it at the exact path."""
+    return FileResponse(FRONTEND_DIR / "sitemap.xml", media_type="application/xml")
+
+
 @app.get("/api/lidar-sources")
 def api_lidar_sources() -> JSONResponse:
     """Return the rendered LIDAR_SOURCES.md as HTML. Source of truth
