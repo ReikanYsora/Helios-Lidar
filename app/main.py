@@ -124,6 +124,7 @@ def helios_downloads_endpoint() -> JSONResponse:
     #snapshots come from in steady state.
     snap = helios_downloads.get_downloads_snapshot(
         on_fresh=_stats.record_download_snapshot,
+        on_fresh_per_tag=_stats.record_download_per_tag,
     )
     if snap is None:
         return JSONResponse(

@@ -141,18 +141,19 @@ def _version_sort_key(row: ReleaseDownload) -> tuple[int, ...]:
     return tuple(parts) if parts else (0,)
 
 
-def get_downloads_snapshot(on_fresh=None) -> HeliosDownloadsSnapshot | None:
+def get_downloads_snapshot(on_fresh=None, on_fresh_per_tag=None) -> HeliosDownloadsSnapshot | None:
     """Return the cached snapshot if fresh, otherwise refresh in-place.
 
     Returns the stale cache on fetch errors. Returns None only if we
     have never successfully fetched the data in this process.
 
-    `on_fresh` is an optional callback fired only when we successfully
-    pull a NEW snapshot from GitHub (not on cache-hit, not on cached
-    fallback after a failure). The dashboard wires it to
-    StatsStore.record_download_snapshot so we accumulate a per-hour
-    history of the cumulative download count and can derive the
-    "downloads in the last 24 h / 7 d / 30 d" histograms over time.
+    `on_fresh(total)` and `on_fresh_per_tag([(tag, count), ...])` are
+    optional callbacks fired only when we successfully pull a NEW
+    snapshot from GitHub (not on cache-hit, not on cached fallback
+    after a failure). The dashboard wires them to the StatsStore so
+    we accumulate per-hour cumulative-download history both as a
+    single total AND broken down per release tag, which lets the
+    /stats histograms render per-version time series.
     """
     global _cache
     with _lock:
@@ -165,6 +166,10 @@ def get_downloads_snapshot(on_fresh=None) -> HeliosDownloadsSnapshot | None:
                 try: on_fresh(_cache.total_downloads)
                 except Exception:
                     log.exception("downloads on_fresh callback raised")
+            if on_fresh_per_tag is not None:
+                try: on_fresh_per_tag([(r.tag, r.downloads) for r in _cache.by_version])
+                except Exception:
+                    log.exception("downloads on_fresh_per_tag callback raised")
             return _cache
         except (urllib.error.URLError, ValueError, json.JSONDecodeError, TimeoutError):
             log.exception("Helios downloads fetch failed; serving stale cache if any")

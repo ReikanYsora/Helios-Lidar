@@ -54,6 +54,14 @@ class StatsStore:
                         ts          INTEGER PRIMARY KEY,
                         total_count INTEGER NOT NULL
                     );
+                    CREATE TABLE IF NOT EXISTS download_per_tag_snapshots (
+                        ts          INTEGER NOT NULL,
+                        tag         TEXT    NOT NULL,
+                        total_count INTEGER NOT NULL,
+                        PRIMARY KEY (ts, tag)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_dl_per_tag_ts
+                        ON download_per_tag_snapshots (ts);
                     """
                 )
 
@@ -152,3 +160,61 @@ class StatsStore:
         except sqlite3.Error as exc:
             log.warning("stats.last_download_snapshot_before failed: %s", exc)
             return None
+
+    def record_download_per_tag(self, per_tag: list[tuple[str, int]]) -> bool:
+        """Append one row per (release_tag, cumulative_count) at the
+        current wall-clock time. Used to derive per-version download
+        deltas inside each bucket of the dashboard histograms."""
+        if not per_tag:
+            return False
+        now = int(time.time())
+        try:
+            rows = []
+            for tag, c in per_tag:
+                if not isinstance(c, int) or c < 0 or not isinstance(tag, str) or not tag:
+                    continue
+                rows.append((now, tag, c))
+            if not rows:
+                return False
+            with self._lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.executemany(
+                        "INSERT OR REPLACE INTO download_per_tag_snapshots (ts, tag, total_count) "
+                        "VALUES (?, ?, ?)",
+                        rows,
+                    )
+            return True
+        except sqlite3.Error as exc:
+            log.warning("stats.record_download_per_tag failed: %s", exc)
+            return False
+
+    def download_per_tag_snapshots_since(self, since_unix: int) -> list[tuple[int, str, int]]:
+        """Ordered (ts, tag, count) rows >= since_unix."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cur = conn.execute(
+                    "SELECT ts, tag, total_count FROM download_per_tag_snapshots "
+                    "WHERE ts >= ? ORDER BY ts, tag",
+                    (since_unix,),
+                )
+                return [(int(ts), str(tag), int(c)) for ts, tag, c in cur.fetchall()]
+        except sqlite3.Error as exc:
+            log.warning("stats.download_per_tag_snapshots_since failed: %s", exc)
+            return []
+
+    def last_download_per_tag_before(self, before_unix: int) -> dict[str, int]:
+        """For each tag, the highest snapshot total_count strictly
+        before `before_unix`. Used as the per-tag baseline so the
+        first bucket inside a window doesn't double-count downloads
+        that landed before the window started."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cur = conn.execute(
+                    "SELECT tag, MAX(total_count) FROM download_per_tag_snapshots "
+                    "WHERE ts < ? GROUP BY tag",
+                    (before_unix,),
+                )
+                return {str(tag): int(c) for tag, c in cur.fetchall() if tag is not None}
+        except sqlite3.Error as exc:
+            log.warning("stats.last_download_per_tag_before failed: %s", exc)
+            return {}

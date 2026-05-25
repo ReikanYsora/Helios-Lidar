@@ -262,14 +262,18 @@ function fullTooltipLabel(key)
 //Per-histogram state: chart instance + active range + which fields
 //to read from the snapshot for each range.
 const histograms = {
-    visits:      { chart: null, range: '24h', src: {
+    visits:        { chart: null, range: '24h', src: {
         '24h': 'hourly_24h', '7d': 'hourly_7d', '30d': 'daily_30d', '1y': 'daily_1y',
     }, accent: () => readCssVar('--accent', '#f5a623') },
-    conversions: { chart: null, range: '24h', src: {
+    conversions:   { chart: null, range: '24h', src: {
         '24h': 'conversions_hourly_24h', '7d': 'conversions_hourly_7d',
         '30d': 'conversions_daily_30d',  '1y': 'conversions_daily_1y',
     }, accent: () => '#22c55e' },
-    server:      { chart: null, range: '24h', src: {
+    'downloads-pv':{ chart: null, range: '24h', src: {
+        '24h': 'downloads_pv_hourly_24h', '7d': 'downloads_pv_hourly_7d',
+        '30d': 'downloads_pv_daily_30d',  '1y': 'downloads_pv_daily_1y',
+    }, accent: () => '#3b82f6' },
+    server:        { chart: null, range: '24h', src: {
         '24h': 'server_hourly_24h', '7d': 'server_daily_7d',
         '30d': 'server_daily_30d',  '1y': 'server_daily_1y',
     }, accent: () => readCssVar('--accent', '#f5a623') },
@@ -298,11 +302,73 @@ function applyHistogram(name)
     {
         h.chart = renderServerLines(`chart-histogram-${name}`, data || {}, h.range);
     }
+    else if (name === 'downloads-pv')
+    {
+        h.chart = renderStackedPerVersion(`chart-downloads-pv`, data || {labels: [], datasets: []}, h.range);
+    }
     else
     {
         const series = Array.isArray(data) ? data : [];
         h.chart = renderBars(`chart-histogram-${name}`, series, h.range, h.accent());
     }
+}
+
+//Stacked bar chart for per-version downloads over time. Each
+//release tag is a separate stack segment, sized by the delta in
+//that bucket. Same X-axis formatting as the single-series bars
+//(midnight day separators on the 7-day view, etc.).
+function renderStackedPerVersion(canvasId, payload, range)
+{
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return null;
+    const labels   = (payload.labels   || []);
+    const datasets = (payload.datasets || []).map((ds, i) => ({
+        label: ds.tag,
+        data:  ds.data,
+        backgroundColor: SLICE_COLORS[i % SLICE_COLORS.length],
+        borderWidth: 0, borderSkipped: false, borderRadius: 2,
+    }));
+    const opts = barOptions(range);
+    opts.scales.x.stacked = true;
+    opts.scales.y.stacked = true;
+    opts.plugins.legend = {
+        display: datasets.length > 0,
+        position: 'top', align: 'end',
+        labels: { color: readCssVar('--ink', '#e6e6e6'), boxWidth: 12, padding: 8, font: { size: 11 } },
+    };
+    opts.plugins.tooltip.callbacks.title = (items) => fullTooltipLabel(labels[items[0].dataIndex] || items[0].label);
+    //Day separators on the 7d view via the same plugin used by
+    //single-series bars; reuse the visits-style plugin inline here.
+    const plugins = [];
+    if (range === '7d')
+    {
+        plugins.push({
+            id: 'day-separators-pv',
+            afterDatasetsDraw(chart)
+            {
+                const xs = chart.scales.x; const ya = chart.scales.y; const c = chart.ctx;
+                c.save();
+                c.strokeStyle = readCssVar('--border', 'rgba(255,255,255,0.2)');
+                c.lineWidth = 1; c.setLineDash([2, 3]);
+                labels.forEach((lbl, i) =>
+                {
+                    if (lbl && lbl.endsWith && lbl.endsWith('T00') && i > 0)
+                    {
+                        const halfBar = (xs.getPixelForValue(1) - xs.getPixelForValue(0)) / 2;
+                        const x = xs.getPixelForValue(i) - halfBar;
+                        c.beginPath(); c.moveTo(x, ya.top); c.lineTo(x, ya.bottom); c.stroke();
+                    }
+                });
+                c.restore();
+            },
+        });
+    }
+    return new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels.map((l) => formatXLabel(l, range)), datasets },
+        options: opts,
+        plugins,
+    });
 }
 
 //Per-version downloads bar chart (cumulative count per release

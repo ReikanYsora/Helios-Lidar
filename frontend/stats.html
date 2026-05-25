@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Helios Analytics</title>
   <link rel="icon" type="image/png" href="/static/helios-icon.png">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=20260525a">
 </head>
 <body>
   <div class="bg-blur bg-blur--left"  aria-hidden="true"></div>
@@ -89,9 +89,24 @@
       </div>
     </section>
 
-    <section class="card stats-histogram" data-hist="downloads">
+    <section class="card stats-histogram" data-hist="downloads-pv">
       <header class="histogram-header">
-        <h2>Card downloads per version</h2>
+        <h2>Card downloads per version, over time</h2>
+        <div class="histogram-tabs" role="tablist" aria-label="Time range">
+          <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
+          <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
+          <button type="button" class="hist-tab"           data-range="30d" role="tab" aria-selected="false">30 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
+        </div>
+      </header>
+      <div class="chart-wrap chart-wrap--wide">
+        <canvas id="chart-downloads-pv"></canvas>
+      </div>
+    </section>
+
+    <section class="card stats-histogram" data-hist="downloads-versions">
+      <header class="histogram-header">
+        <h2>Card downloads per version, all-time totals</h2>
       </header>
       <div class="chart-wrap chart-wrap--wide">
         <canvas id="chart-downloads-per-version"></canvas>

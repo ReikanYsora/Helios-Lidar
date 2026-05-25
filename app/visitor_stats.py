@@ -397,6 +397,99 @@ def _ts_hourly_buckets(timestamps: list[int], now: datetime, window_hours: int) 
     return [{"label": k, "count": v} for k, v in buckets.items()]
 
 
+def _per_tag_deltas(per_tag_snapshots: list[tuple[int, str, int]],
+                    baselines: dict[str, int],
+                    now: datetime,
+                    window_hours: int | None = None,
+                    window_days: int | None = None) -> dict:
+    """Build a per-version stacked histogram from per-tag snapshots.
+
+    Input rows are `(ts, tag, cumulative_count)` ordered by ts. For
+    each tag we bucket the cumulative counts by time window and
+    compute per-bucket deltas vs the highest seen so far for that
+    tag (starting from `baselines[tag]` when set, else the bucket's
+    own min so the first bucket isn't a flat zero on cold-start).
+
+    Returns Chart.js-friendly:
+        {
+            "labels":   [bucket_keys...],   //chronological
+            "datasets": [
+                {"tag": "<release>", "data": [count_per_bucket, ...]},
+                ...
+            ],
+        }
+    """
+    assert (window_hours is None) ^ (window_days is None)
+    if window_hours is not None:
+        start = (now - timedelta(hours=window_hours - 1)).replace(minute=0, second=0, microsecond=0)
+        step  = timedelta(hours=1)
+        count = window_hours
+        fmt   = "%Y-%m-%dT%H"
+    else:
+        start = (now - timedelta(days=window_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        step  = timedelta(days=1)
+        count = window_days
+        fmt   = "%Y-%m-%d"
+
+    labels: list[str] = [(start + i * step).strftime(fmt) for i in range(count)]
+    key_to_index = {k: i for i, k in enumerate(labels)}
+
+    #Per-tag: bucket_max + bucket_min, each indexed by tag then bucket index.
+    tag_max: dict[str, list[int]] = {}
+    tag_min: dict[str, list[int]] = {}
+    for ts, tag, total in per_tag_snapshots:
+        d = datetime.fromtimestamp(ts, tz=timezone.utc)
+        k = d.strftime(fmt)
+        i = key_to_index.get(k)
+        if i is None:
+            continue
+        if tag not in tag_max:
+            tag_max[tag] = [-1] * count
+            tag_min[tag] = [-1] * count
+        if tag_max[tag][i] < 0 or total > tag_max[tag][i]:
+            tag_max[tag][i] = total
+        if tag_min[tag][i] < 0 or total < tag_min[tag][i]:
+            tag_min[tag][i] = total
+
+    #Also seed baselines for tags that appear only in the window
+    #(without a pre-window snapshot). Their first-bucket delta uses
+    #the bucket's own min as implicit baseline.
+    all_tags = set(tag_max) | set(baselines)
+
+    #Sort tags by version order: parse "vX.Y.Z" descending so the
+    #newest release sits at the top of the stack legend.
+    def _ver_key(t: str) -> tuple[int, ...]:
+        t = t.lstrip("vV").split("-", 1)[0]
+        try:
+            return tuple(int(x) for x in t.split("."))
+        except ValueError:
+            return (0,)
+    sorted_tags = sorted(all_tags, key=_ver_key, reverse=True)
+
+    datasets: list[dict] = []
+    for tag in sorted_tags:
+        prev = baselines.get(tag)
+        bucket_max = tag_max.get(tag, [-1] * count)
+        bucket_min = tag_min.get(tag, [-1] * count)
+        data: list[int] = []
+        for i in range(count):
+            cmax = bucket_max[i]
+            if cmax < 0:
+                data.append(0)
+            else:
+                if prev is None:
+                    data.append(max(0, cmax - bucket_min[i]))
+                else:
+                    data.append(max(0, cmax - prev))
+                prev = cmax
+        #Skip tags whose window is entirely zeros to keep the chart
+        #legend short on long ranges.
+        if any(v > 0 for v in data):
+            datasets.append({"tag": tag, "data": data})
+
+    return {"labels": labels, "datasets": datasets}
+
+
 def _bmac_daily_amounts(donations, now: datetime, window_days: int) -> list[dict]:
     """Sum donation amounts per day over the last `window_days`.
     Returns one bucket per day even when empty so the chart canvas
@@ -546,6 +639,13 @@ class StatsSnapshot(NamedTuple):
     server_daily_7d:   dict
     server_daily_30d:  dict
     server_daily_1y:   dict
+    #Per-version downloads: stacked-bar-ready {labels, datasets[]}
+    #where each dataset is {tag, data[]}. Same four windows as the
+    #other histograms.
+    downloads_pv_hourly_24h: dict
+    downloads_pv_hourly_7d:  dict
+    downloads_pv_daily_30d:  dict
+    downloads_pv_daily_1y:   dict
 
 
 CACHE_TTL_SECONDS = 5 * 60
@@ -649,6 +749,10 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
         dl_daily_30d:  list[dict] = _ts_daily_buckets([],  now, 30)
         dl_1y = 0
         dl_daily_1y: list[dict]  = _ts_daily_buckets([],  now, 365)
+        dl_pv_24h = {"labels": [], "datasets": []}
+        dl_pv_7d  = {"labels": [], "datasets": []}
+        dl_pv_30d = {"labels": [], "datasets": []}
+        dl_pv_1y  = {"labels": [], "datasets": []}
         if downloads_module is not None and stats_store is not None:
             try:
                 dl_snap = downloads_module.get_downloads_snapshot(
@@ -677,6 +781,23 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
                 dl_7d  = sum(b["count"] for b in dl_hourly_7d)
                 dl_30d = sum(b["count"] for b in dl_daily_30d)
                 dl_1y  = sum(b["count"] for b in dl_daily_1y)
+
+                #Per-version time series: read all per-tag snapshots
+                #in the 1y window once, slice by window for the
+                #shorter ranges, and run the per-tag delta builder
+                #with the right baseline per window.
+                pv_snaps_1y = stats_store.download_per_tag_snapshots_since(hist_1y_unix)
+                pv_snaps_30d = [r for r in pv_snaps_1y if r[0] >= hist_30d_unix]
+                pv_snaps_7d  = [r for r in pv_snaps_1y if r[0] >= hist_7d_unix]
+                pv_snaps_24h = [r for r in pv_snaps_1y if r[0] >= hist_24h_unix]
+                base_24h = stats_store.last_download_per_tag_before(hist_24h_unix)
+                base_7d  = stats_store.last_download_per_tag_before(hist_7d_unix)
+                base_30d = stats_store.last_download_per_tag_before(hist_30d_unix)
+                base_1y  = stats_store.last_download_per_tag_before(hist_1y_unix)
+                dl_pv_24h = _per_tag_deltas(pv_snaps_24h, base_24h, now, window_hours=24)
+                dl_pv_7d  = _per_tag_deltas(pv_snaps_7d,  base_7d,  now, window_hours=24 * 7)
+                dl_pv_30d = _per_tag_deltas(pv_snaps_30d, base_30d, now, window_days=30)
+                dl_pv_1y  = _per_tag_deltas(pv_snaps_1y,  base_1y,  now, window_days=365)
             except Exception:
                 log.exception("download histogram build failed")
 
@@ -783,6 +904,10 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
             server_daily_7d  =server_daily_7d,
             server_daily_30d =server_daily_30d,
             server_daily_1y  =server_daily_1y,
+            downloads_pv_hourly_24h=dl_pv_24h,
+            downloads_pv_hourly_7d =dl_pv_7d,
+            downloads_pv_daily_30d =dl_pv_30d,
+            downloads_pv_daily_1y  =dl_pv_1y,
         )
         _cache = snapshot
         return snapshot
@@ -838,4 +963,8 @@ def snapshot_to_dict(snap: StatsSnapshot) -> dict:
         "server_daily_7d":   snap.server_daily_7d,
         "server_daily_30d":  snap.server_daily_30d,
         "server_daily_1y":   snap.server_daily_1y,
+        "downloads_pv_hourly_24h": snap.downloads_pv_hourly_24h,
+        "downloads_pv_hourly_7d":  snap.downloads_pv_hourly_7d,
+        "downloads_pv_daily_30d":  snap.downloads_pv_daily_30d,
+        "downloads_pv_daily_1y":   snap.downloads_pv_daily_1y,
     }

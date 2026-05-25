@@ -28,8 +28,9 @@ proof the source actually feeds the pipeline.
   Free registration required on the portal before download. Smallest LAZ tile is around 130 MB.
   Source: @Nanianmichaels on the Helios HA community thread.
 * **UK (England)**, [Environment Agency LiDAR Composite](https://environment.data.gov.uk/survey).
-* **USA**, [USGS 3DEP – National Map Downloader](https://apps.nationalmap.gov/downloader/).
+* **USA**, [USGS 3DEP , National Map Downloader](https://apps.nationalmap.gov/downloader/).
   Free, no registration required. Select "Elevation Source Data (3DEP)" in the dataset filter to find LAZ point clouds and DSM/DTM rasters.
+  Source: @darkon42 in [PR #1](https://github.com/ReikanYsora/Helios-Lidar/pull/1).
 * **Other countries**,
   [OpenTopography](https://opentopography.org/) aggregates public
   LiDAR worldwide, otherwise check your national geoportal.

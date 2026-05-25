@@ -123,13 +123,20 @@ main
     height + body drops its 100vh minimum so the footer-glow
     sits flush under the last content row, no leftover viewport
     space to distribute as a visible gap.                       */
+html.page-short,
 html.page-short body
 {
-    min-height: 0;
+    min-height: 0 !important;
 }
 html.page-short main
 {
-    flex: 0 0 auto;
+    flex: none !important;
+}
+html.page-short main > .stats-main,
+html.page-short main > .privacy-main
+{
+    flex: none;
+    min-height: 0;
 }
 html.page-short[data-page="stats"] main,
 html.page-short main:has(.stats-main)
