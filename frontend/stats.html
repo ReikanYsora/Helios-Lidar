@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Helios-Lidar , visitor stats</title>
+  <title>Helios Analytics</title>
   <link rel="icon" type="image/png" href="/static/helios-icon.png">
   <link rel="stylesheet" href="/static/style.css">
 </head>
@@ -14,11 +14,7 @@
 
   <main class="stats-main">
     <header class="stats-header">
-      <h1>Helios-Lidar , visitor stats</h1>
-      <p class="lede">Hidden dashboard. Numbers are derived from the
-        nginx access log, deduped to one visit per (IP, hour) on
-        <code>GET /</code> with bots filtered out. Refreshed at most
-        once every 5 minutes; geo lookups warm up incrementally.</p>
+      <h1>Helios Analytics</h1>
     </header>
 
     <section class="stats-kpis">
@@ -31,16 +27,17 @@
         <div class="kpi-label">unique IPs, last 24 h</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value" data-kpi="total_visits_7d">,</div>
-        <div class="kpi-label">visits, last 7 days</div>
+        <div class="kpi-value" data-kpi="conversions_24h">,</div>
+        <div class="kpi-label">conversions, last 24 h</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value" data-kpi="total_visits_30d">,</div>
-        <div class="kpi-label">visits, last 30 days</div>
+        <div class="kpi-value" data-kpi="downloads_24h">,</div>
+        <div class="kpi-label">card downloads, last 24 h</div>
       </div>
     </section>
 
-    <section class="card stats-histogram">
+    <!--  Three histograms with shared 24h / 7d / 30d range tabs. -->
+    <section class="card stats-histogram" data-hist="visits">
       <header class="histogram-header">
         <h2>Visits over time</h2>
         <div class="histogram-tabs" role="tablist" aria-label="Time range">
@@ -50,7 +47,35 @@
         </div>
       </header>
       <div class="chart-wrap chart-wrap--wide">
-        <canvas id="chart-histogram"></canvas>
+        <canvas id="chart-histogram-visits"></canvas>
+      </div>
+    </section>
+
+    <section class="card stats-histogram" data-hist="conversions">
+      <header class="histogram-header">
+        <h2>LiDAR conversions over time</h2>
+        <div class="histogram-tabs" role="tablist" aria-label="Time range">
+          <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
+          <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
+          <button type="button" class="hist-tab"           data-range="30d" role="tab" aria-selected="false">30 days</button>
+        </div>
+      </header>
+      <div class="chart-wrap chart-wrap--wide">
+        <canvas id="chart-histogram-conversions"></canvas>
+      </div>
+    </section>
+
+    <section class="card stats-histogram" data-hist="downloads">
+      <header class="histogram-header">
+        <h2>Card downloads over time</h2>
+        <div class="histogram-tabs" role="tablist" aria-label="Time range">
+          <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
+          <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
+          <button type="button" class="hist-tab"           data-range="30d" role="tab" aria-selected="false">30 days</button>
+        </div>
+      </header>
+      <div class="chart-wrap chart-wrap--wide">
+        <canvas id="chart-histogram-downloads"></canvas>
       </div>
     </section>
 
@@ -79,6 +104,12 @@
           <canvas id="chart-devices"></canvas>
         </div>
       </div>
+      <div class="card chart-card stats-grid-wide">
+        <h3>Top external referrers</h3>
+        <div class="chart-wrap">
+          <canvas id="chart-referrers"></canvas>
+        </div>
+      </div>
     </section>
 
     <footer class="stats-footer">
@@ -89,5 +120,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script type="module" src="/static/stats.js"></script>
+  <!--  Background lattice + breathing animation, same module the
+        main page uses. Sits behind the foreground content thanks
+        to its own .bg-pointcloud { z-index: -2 } in style.css.  -->
+  <script type="module" src="/static/bg-pointcloud.js"></script>
 </body>
 </html>

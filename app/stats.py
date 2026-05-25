@@ -50,6 +50,10 @@ class StatsStore:
                     );
                     CREATE INDEX IF NOT EXISTS idx_conversions_completed_at
                         ON conversions (completed_at);
+                    CREATE TABLE IF NOT EXISTS download_snapshots (
+                        ts          INTEGER PRIMARY KEY,
+                        total_count INTEGER NOT NULL
+                    );
                     """
                 )
 
@@ -81,3 +85,70 @@ class StatsStore:
         except sqlite3.Error as exc:
             log.warning("stats.total_conversions failed: %s", exc)
             return 0
+
+    def conversion_timestamps(self, since_unix: int) -> list[int]:
+        """Every conversion completed_at >= since_unix, ascending. The
+        dashboard buckets these into hourly / daily histograms."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cur = conn.execute(
+                    "SELECT completed_at FROM conversions WHERE completed_at >= ? ORDER BY completed_at",
+                    (since_unix,),
+                )
+                return [int(r[0]) for r in cur.fetchall()]
+        except sqlite3.Error as exc:
+            log.warning("stats.conversion_timestamps failed: %s", exc)
+            return []
+
+    def record_download_snapshot(self, total_count: int) -> bool:
+        """Append a (ts, total) snapshot of the cumulative download
+        count fetched from the GitHub Releases API. Called once per
+        successful refresh of helios_downloads.get_downloads_snapshot
+        so we can compute per-period download deltas without GitHub
+        exposing daily numbers directly.
+        """
+        if not isinstance(total_count, int) or total_count < 0:
+            return False
+        now = int(time.time())
+        try:
+            with self._lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO download_snapshots (ts, total_count) VALUES (?, ?)",
+                        (now, total_count),
+                    )
+            return True
+        except sqlite3.Error as exc:
+            log.warning("stats.record_download_snapshot failed: %s", exc)
+            return False
+
+    def download_snapshots(self, since_unix: int) -> list[tuple[int, int]]:
+        """Return ordered (ts, total_count) snapshots >= since_unix.
+        Caller derives per-period download counts by diffing the
+        first / last entry inside each bucket."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cur = conn.execute(
+                    "SELECT ts, total_count FROM download_snapshots WHERE ts >= ? ORDER BY ts",
+                    (since_unix,),
+                )
+                return [(int(ts), int(c)) for ts, c in cur.fetchall()]
+        except sqlite3.Error as exc:
+            log.warning("stats.download_snapshots failed: %s", exc)
+            return []
+
+    def last_download_snapshot_before(self, before_unix: int) -> tuple[int, int] | None:
+        """Snapshot immediately before `before_unix`, used as the
+        zero-baseline when computing deltas inside a time window.
+        Returns None when no snapshot exists prior."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cur = conn.execute(
+                    "SELECT ts, total_count FROM download_snapshots WHERE ts < ? ORDER BY ts DESC LIMIT 1",
+                    (before_unix,),
+                )
+                row = cur.fetchone()
+            return (int(row[0]), int(row[1])) if row else None
+        except sqlite3.Error as exc:
+            log.warning("stats.last_download_snapshot_before failed: %s", exc)
+            return None

@@ -106,6 +106,36 @@ def _ua_os(ua: str) -> str:
     return "Other"
 
 
+#Own-host substrings; referrers matching any of these are
+#considered internal navigation and stripped from the external-
+#referrer chart so the chart shows only "where the visitor came
+#from" (search engines, forums, social, etc.).
+_OWN_HOSTS = ("helios-lidar.org", "37.59.122.223", "localhost")
+
+
+def _referrer_host(ref: str) -> str | None:
+    """Return the bare hostname of a referrer URL, or None if the
+    referrer is empty / "-" / one of our own hosts. Strips leading
+    "www.".
+    """
+    if not ref or ref == "-":
+        return None
+    #Skip our own URLs (internal navigation).
+    for h in _OWN_HOSTS:
+        if h in ref:
+            return None
+    try:
+        from urllib.parse import urlparse
+        host = urlparse(ref).hostname
+    except Exception:
+        return None
+    if not host:
+        return None
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
 def _ua_is_mobile(ua: str) -> bool:
     #Conservative: "Mobile" token is the standard mobile marker;
     #Android tablets sometimes omit it, but those count as mobile
@@ -120,6 +150,7 @@ class LogRow(NamedTuple):
     path: str
     status: int
     ua: str
+    referrer: str
 
 
 def _iter_log_files(since: datetime) -> Iterator[Path]:
@@ -186,6 +217,7 @@ def parse_rows(since: datetime, max_rows: int = 500_000) -> list[LogRow]:
                         path=m["path"] or "",
                         status=status,
                         ua=m["ua"] or "",
+                        referrer=m["referrer"] or "",
                     ))
                     if len(rows) >= max_rows:
                         return rows
@@ -270,42 +302,45 @@ class GeoCache:
                     [(ip, cc, name, now) for ip, (cc, name) in batch.items()],
                 )
 
-    def resolve_missing(self, ips: Iterable[str], cap: int = 100) -> dict[str, tuple[str | None, str | None]]:
+    def resolve_missing(self, ips: Iterable[str], cap: int = 300) -> dict[str, tuple[str | None, str | None]]:
         """Fetch up to `cap` uncached IPs from ip-api.com and persist
-        the result. Returns the freshly-resolved subset (caller can
-        merge with the prior lookup_all result).
+        the result. Splits into 100-IP batches (ip-api batch endpoint
+        cap) and stays well inside the 15-batch/min rate limit so a
+        single refresh can warm up several hundred IPs in one go.
         """
         cached = self.lookup_all(ips)
         unknown = [ip for ip in {x for x in ips if x} if ip not in cached]
         if not unknown:
             return {}
         unknown = unknown[:cap]
-        try:
-            req = urllib.request.Request(
-                "http://ip-api.com/batch?fields=status,country,countryCode,query",
-                data=json.dumps(unknown).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=8) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-            log.warning("ip-api batch failed: %s", exc)
-            return {}
         out: dict[str, tuple[str | None, str | None]] = {}
-        for entry in payload:
-            if not isinstance(entry, dict):
+        for chunk_start in range(0, len(unknown), 100):
+            chunk = unknown[chunk_start:chunk_start + 100]
+            try:
+                req = urllib.request.Request(
+                    "http://ip-api.com/batch?fields=status,country,countryCode,query",
+                    data=json.dumps(chunk).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    payload = json.loads(resp.read().decode("utf-8"))
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+                log.warning("ip-api batch failed: %s", exc)
                 continue
-            ip = entry.get("query")
-            if not ip:
-                continue
-            if entry.get("status") == "success":
-                out[ip] = (entry.get("countryCode"), entry.get("country"))
-            else:
-                #Cache the failure as a null entry to avoid retrying
-                #on every refresh; many failed lookups are private
-                #IPs (CGNAT, 10.x, etc.) that will never resolve.
-                out[ip] = (None, None)
+            for entry in payload:
+                if not isinstance(entry, dict):
+                    continue
+                ip = entry.get("query")
+                if not ip:
+                    continue
+                if entry.get("status") == "success":
+                    out[ip] = (entry.get("countryCode"), entry.get("country"))
+                else:
+                    #Cache the failure as a null entry to avoid
+                    #retrying on every refresh; many failed lookups
+                    #are private IPs (CGNAT, 10.x, etc.).
+                    out[ip] = (None, None)
         self.store(out)
         return out
 
@@ -347,6 +382,83 @@ def _daily_buckets(rows: list[LogRow], now: datetime, window_days: int) -> list[
     return [{"label": k, "count": v} for k, v in buckets.items()]
 
 
+def _ts_hourly_buckets(timestamps: list[int], now: datetime, window_hours: int) -> list[dict]:
+    """Same as _hourly_buckets but takes raw unix timestamps."""
+    buckets: dict[str, int] = {}
+    start = (now - timedelta(hours=window_hours - 1)).replace(minute=0, second=0, microsecond=0)
+    for i in range(window_hours):
+        key = (start + timedelta(hours=i)).strftime("%Y-%m-%dT%H")
+        buckets[key] = 0
+    for ts in timestamps:
+        d = datetime.fromtimestamp(ts, tz=timezone.utc)
+        key = d.strftime("%Y-%m-%dT%H")
+        if key in buckets:
+            buckets[key] += 1
+    return [{"label": k, "count": v} for k, v in buckets.items()]
+
+
+def _ts_daily_buckets(timestamps: list[int], now: datetime, window_days: int) -> list[dict]:
+    buckets: dict[str, int] = {}
+    start = (now - timedelta(days=window_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    for i in range(window_days):
+        key = (start + timedelta(days=i)).strftime("%Y-%m-%d")
+        buckets[key] = 0
+    for ts in timestamps:
+        key = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
+        if key in buckets:
+            buckets[key] += 1
+    return [{"label": k, "count": v} for k, v in buckets.items()]
+
+
+def _snapshots_to_deltas(snapshots: list[tuple[int, int]],
+                         baseline: tuple[int, int] | None,
+                         now: datetime,
+                         window_hours: int | None = None,
+                         window_days: int | None = None) -> list[dict]:
+    """Convert a list of (ts, cumulative_count) snapshots into a
+    histogram of new downloads per bucket.
+
+    For each bucket, the bucket count is `max_in_bucket - prev_max`
+    where prev_max is the highest cumulative count we've seen at or
+    before the start of the bucket. `baseline` is the snapshot just
+    before the window starts; without it the first bucket's delta
+    would falsely contain every download ever made up to that point.
+    """
+    assert (window_hours is None) ^ (window_days is None), "exactly one window"
+    bucket_keys: list[str] = []
+    if window_hours is not None:
+        start = (now - timedelta(hours=window_hours - 1)).replace(minute=0, second=0, microsecond=0)
+        for i in range(window_hours):
+            bucket_keys.append((start + timedelta(hours=i)).strftime("%Y-%m-%dT%H"))
+        fmt = "%Y-%m-%dT%H"
+    else:
+        start = (now - timedelta(days=window_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        for i in range(window_days):
+            bucket_keys.append((start + timedelta(days=i)).strftime("%Y-%m-%d"))
+        fmt = "%Y-%m-%d"
+
+    #Largest cumulative count seen in each bucket; -1 marks empty
+    bucket_max: dict[str, int] = {k: -1 for k in bucket_keys}
+    for ts, total in snapshots:
+        d = datetime.fromtimestamp(ts, tz=timezone.utc)
+        key = d.strftime(fmt)
+        if key in bucket_max and total > bucket_max[key]:
+            bucket_max[key] = total
+
+    prev = baseline[1] if baseline is not None else None
+    out: list[dict] = []
+    for k in bucket_keys:
+        cur = bucket_max[k]
+        if cur < 0:
+            #No snapshot in this bucket: it counts as 0 new downloads.
+            out.append({"label": k, "count": 0})
+        else:
+            delta = 0 if prev is None else max(0, cur - prev)
+            out.append({"label": k, "count": delta})
+            prev = cur
+    return out
+
+
 class StatsSnapshot(NamedTuple):
     fetched_at_unix: float
     total_visits_24h: int
@@ -362,6 +474,26 @@ class StatsSnapshot(NamedTuple):
     browsers: list[dict]
     operating_systems: list[dict]
     devices: list[dict]
+    referrers: list[dict]
+    #Conversion histograms (rows from the stats.db conversions table).
+    conversions_total: int
+    conversions_24h: int
+    conversions_7d: int
+    conversions_30d: int
+    conversions_hourly_24h: list[dict]
+    conversions_hourly_7d: list[dict]
+    conversions_daily_30d: list[dict]
+    #Download histograms (deltas between download_snapshots rows).
+    #Sparse until enough snapshots have accumulated; the dashboard
+    #renders the zero-padded buckets either way so the canvas size
+    #stays stable.
+    downloads_total: int
+    downloads_24h: int
+    downloads_7d: int
+    downloads_30d: int
+    downloads_hourly_24h: list[dict]
+    downloads_hourly_7d: list[dict]
+    downloads_daily_30d: list[dict]
 
 
 CACHE_TTL_SECONDS = 5 * 60
@@ -370,10 +502,16 @@ _cache_lock = threading.Lock()
 _geo: GeoCache | None = None
 
 
-def get_snapshot(geo_db_path: Path) -> StatsSnapshot | None:
+def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None) -> StatsSnapshot | None:
     """Return the cached snapshot if fresh, otherwise rebuild it
     from the current log files. Returns None only on a complete
     failure (nginx logs unreadable AND no cache yet).
+
+    `stats_store` is the StatsStore instance (for the conversions
+    table + the download_snapshots table). `downloads_module` is
+    the helios_downloads module (we call get_downloads_snapshot
+    with a callback so the cumulative-downloads history feeds the
+    download_snapshots table).
     """
     global _cache, _geo
     if _geo is None:
@@ -400,13 +538,19 @@ def get_snapshot(geo_db_path: Path) -> StatsSnapshot | None:
         #UA breakdowns: use the last-30-days window so the pie
         #charts read as "where do my visitors come from / what do
         #they use" rather than "what did one IP do in one hour".
-        browsers: dict[str, int]  = defaultdict(int)
-        oses:     dict[str, int]  = defaultdict(int)
-        devices:  dict[str, int]  = defaultdict(int)
+        browsers:  dict[str, int]  = defaultdict(int)
+        oses:      dict[str, int]  = defaultdict(int)
+        devices:   dict[str, int]  = defaultdict(int)
+        referrers: dict[str, int]  = defaultdict(int)
         for v in visits_30d:
             browsers[_ua_browser(v.ua)] += 1
             oses[_ua_os(v.ua)] += 1
             devices["Mobile" if _ua_is_mobile(v.ua) else "Desktop"] += 1
+            host = _referrer_host(v.referrer)
+            if host:
+                referrers[host] += 1
+            else:
+                referrers["Direct"] += 1
 
         #Geo: best-effort. Resolve up to 100 new IPs this call;
         #the rest stay "Unknown" until they get resolved on a
@@ -419,6 +563,61 @@ def get_snapshot(geo_db_path: Path) -> StatsSnapshot | None:
         for v in visits_30d:
             cc, name = cached_geo.get(v.ip, (None, None))
             country_counts[name or "Unknown"] += 1
+
+        #Conversion histograms. Read from the stats.db conversions
+        #table; cheap (single SELECT bounded by since_30d).
+        conv_total = 0
+        conv_24h = conv_7d = conv_30d = 0
+        conv_hourly_24h: list[dict] = _ts_hourly_buckets([], now, 24)
+        conv_hourly_7d:  list[dict] = _ts_hourly_buckets([], now, 24 * 7)
+        conv_daily_30d:  list[dict] = _ts_daily_buckets([],  now, 30)
+        if stats_store is not None:
+            try:
+                conv_total = stats_store.total_conversions()
+                conv_ts_30d = stats_store.conversion_timestamps(int(since_30d.timestamp()))
+                conv_24h = sum(1 for t in conv_ts_30d if t >= int(since_24h.timestamp()))
+                conv_7d  = sum(1 for t in conv_ts_30d if t >= int(since_7d.timestamp()))
+                conv_30d = len(conv_ts_30d)
+                conv_hourly_24h = _ts_hourly_buckets(conv_ts_30d, now, 24)
+                conv_hourly_7d  = _ts_hourly_buckets(conv_ts_30d, now, 24 * 7)
+                conv_daily_30d  = _ts_daily_buckets(conv_ts_30d, now, 30)
+            except Exception:
+                log.exception("conversion histogram build failed")
+
+        #Download snapshots: refresh GitHub now (which records a new
+        #row in download_snapshots via the on_fresh callback), then
+        #read the recent history + diff into per-bucket new-downloads.
+        dl_total = 0
+        dl_24h = dl_7d = dl_30d = 0
+        dl_hourly_24h: list[dict] = _ts_hourly_buckets([], now, 24)
+        dl_hourly_7d:  list[dict] = _ts_hourly_buckets([], now, 24 * 7)
+        dl_daily_30d:  list[dict] = _ts_daily_buckets([],  now, 30)
+        if downloads_module is not None and stats_store is not None:
+            try:
+                dl_snap = downloads_module.get_downloads_snapshot(
+                    on_fresh=stats_store.record_download_snapshot,
+                )
+                if dl_snap is not None:
+                    dl_total = dl_snap.total_downloads
+                hist_24h_unix = int(since_24h.timestamp())
+                hist_7d_unix  = int(since_7d.timestamp())
+                hist_30d_unix = int(since_30d.timestamp())
+                snaps_30d = stats_store.download_snapshots(hist_30d_unix)
+                baseline_30d = stats_store.last_download_snapshot_before(hist_30d_unix)
+                baseline_7d  = stats_store.last_download_snapshot_before(hist_7d_unix)
+                baseline_24h = stats_store.last_download_snapshot_before(hist_24h_unix)
+                #Window-scoped baselines: re-use snaps_30d as input
+                #but filter on the relevant window.
+                snaps_7d  = [s for s in snaps_30d if s[0] >= hist_7d_unix]
+                snaps_24h = [s for s in snaps_30d if s[0] >= hist_24h_unix]
+                dl_daily_30d  = _snapshots_to_deltas(snaps_30d, baseline_30d, now, window_days=30)
+                dl_hourly_7d  = _snapshots_to_deltas(snaps_7d,  baseline_7d,  now, window_hours=24 * 7)
+                dl_hourly_24h = _snapshots_to_deltas(snaps_24h, baseline_24h, now, window_hours=24)
+                dl_24h = sum(b["count"] for b in dl_hourly_24h)
+                dl_7d  = sum(b["count"] for b in dl_hourly_7d)
+                dl_30d = sum(b["count"] for b in dl_daily_30d)
+            except Exception:
+                log.exception("download histogram build failed")
 
         snapshot = StatsSnapshot(
             fetched_at_unix=now_unix,
@@ -435,6 +634,21 @@ def get_snapshot(geo_db_path: Path) -> StatsSnapshot | None:
             browsers =_top_n(browsers,        n=10),
             operating_systems=_top_n(oses,    n=10),
             devices  =_top_n(devices,         n=4),
+            referrers=_top_n(referrers,       n=10),
+            conversions_total=conv_total,
+            conversions_24h=conv_24h,
+            conversions_7d =conv_7d,
+            conversions_30d=conv_30d,
+            conversions_hourly_24h=conv_hourly_24h,
+            conversions_hourly_7d =conv_hourly_7d,
+            conversions_daily_30d =conv_daily_30d,
+            downloads_total=dl_total,
+            downloads_24h=dl_24h,
+            downloads_7d =dl_7d,
+            downloads_30d=dl_30d,
+            downloads_hourly_24h=dl_hourly_24h,
+            downloads_hourly_7d =dl_hourly_7d,
+            downloads_daily_30d =dl_daily_30d,
         )
         _cache = snapshot
         return snapshot
@@ -456,4 +670,19 @@ def snapshot_to_dict(snap: StatsSnapshot) -> dict:
         "browsers":   snap.browsers,
         "operating_systems": snap.operating_systems,
         "devices":    snap.devices,
+        "referrers":  snap.referrers,
+        "conversions_total": snap.conversions_total,
+        "conversions_24h":   snap.conversions_24h,
+        "conversions_7d":    snap.conversions_7d,
+        "conversions_30d":   snap.conversions_30d,
+        "conversions_hourly_24h": snap.conversions_hourly_24h,
+        "conversions_hourly_7d":  snap.conversions_hourly_7d,
+        "conversions_daily_30d":  snap.conversions_daily_30d,
+        "downloads_total": snap.downloads_total,
+        "downloads_24h":   snap.downloads_24h,
+        "downloads_7d":    snap.downloads_7d,
+        "downloads_30d":   snap.downloads_30d,
+        "downloads_hourly_24h": snap.downloads_hourly_24h,
+        "downloads_hourly_7d":  snap.downloads_hourly_7d,
+        "downloads_daily_30d":  snap.downloads_daily_30d,
     }

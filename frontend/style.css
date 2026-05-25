@@ -1705,6 +1705,71 @@ footer .sep
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
 }
+.stats-grid-wide
+{
+    grid-column: 1 / -1;
+}
+
+/*  Privacy page chrome: same card stack as the main page but the
+    typography reads as a long-form policy document.              */
+.privacy-main
+{
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 32px 24px 48px;
+    flex: 1;
+}
+.privacy-header h1
+{
+    margin: 0;
+    color: var(--accent);
+}
+.privacy-updated
+{
+    color: var(--ink-soft);
+    font-size: 13px;
+    margin: 4px 0 22px;
+}
+.privacy-card
+{
+    margin-bottom: 18px;
+}
+.privacy-card h2
+{
+    margin: 0 0 12px;
+    color: var(--accent);
+    font-size: 22px;
+}
+.privacy-card h3
+{
+    margin: 18px 0 6px;
+    font-size: 15px;
+    color: var(--ink);
+    text-transform: none;
+}
+.privacy-card p,
+.privacy-card li
+{
+    line-height: 1.55;
+    color: var(--ink);
+}
+.privacy-card ul
+{
+    margin: 4px 0 8px;
+    padding-left: 22px;
+}
+.privacy-card li
+{
+    margin: 4px 0;
+}
+.privacy-footer
+{
+    margin-top: 16px;
+}
+.privacy-footer a
+{
+    color: var(--accent);
+}
 .chart-card h3
 {
     margin: 0 0 8px;

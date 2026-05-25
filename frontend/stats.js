@@ -1,9 +1,10 @@
 //Visitor-stats dashboard. Fetches /api/stats once on load, renders
-//four doughnut charts (country / browser / OS / device) and a bar
-//histogram with three time-range tabs (24 h, 7 d, 30 d). Same
-//theme variables drive both Chart.js datasets and the surrounding
-//chrome, so a light <-> dark switch from the main page persists
-//across the dashboard too.
+//four doughnut charts (country / browser / OS / device) and three
+//bar histograms (visits / conversions / card downloads), each with
+//its own 24 h / 7 d / 30 d range tab. Same theme variables drive
+//both Chart.js datasets and the surrounding chrome, so a light
+//<-> dark switch from the main page persists across the dashboard
+//too.
 
 const KPI_FMT = (n) =>
 {
@@ -14,8 +15,6 @@ const KPI_FMT = (n) =>
 
 const THEME_STORAGE_KEY = 'helios-lidar-site-theme';
 
-//Read the saved theme + apply it before any chart is mounted so
-//the very first paint matches the user's preference.
 function getSavedTheme()
 {
     try
@@ -28,17 +27,12 @@ function getSavedTheme()
 }
 document.documentElement.setAttribute('data-theme', getSavedTheme());
 
-//Palette pulled at runtime from the page's CSS variables so the
-//charts stay in sync with the chosen theme. Re-read on every
-//render so a theme flip cascades through both static UI + canvases.
 function readCssVar(name, fallback)
 {
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     return v || fallback;
 }
 
-//Doughnut slice palette: rotates through theme-friendly hues that
-//read distinctly in both palettes without going circus.
 const SLICE_COLORS = [
     '#f5a623', '#3b82f6', '#22c55e', '#ec4899', '#a855f7',
     '#14b8a6', '#f97316', '#eab308', '#ef4444', '#6366f1',
@@ -52,9 +46,6 @@ function sliceColors(n)
     return out;
 }
 
-//Default Chart.js options shared by every doughnut: legend
-//bottom-aligned with the current theme's ink colour, no animation
-//bounce on hover so the page reads as a calm dashboard.
 function doughnutOptions()
 {
     const ink = readCssVar('--ink', '#e6e6e6');
@@ -114,8 +105,7 @@ function barOptions(labelFmt)
     };
 }
 
-//Render a doughnut chart from a [{label, count}] series.
-function renderDoughnut(canvasId, series, opts = {})
+function renderDoughnut(canvasId, series)
 {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
@@ -132,21 +122,55 @@ function renderDoughnut(canvasId, series, opts = {})
                 borderColor: readCssVar('--bg', '#0b0d10'),
             }],
         },
-        options: { ...doughnutOptions(), ...opts },
+        options: doughnutOptions(),
     });
 }
 
-//Render a bar chart from a [{label, count}] series with an
-//optional tooltip label formatter so the X-axis can stay compact
-//while the hover shows the full date / hour.
-function renderBars(canvasId, series, accent, labelFmt = (l) => l)
+//Render a bar chart for a [{label, count}] series. `range` drives
+//the X-axis label format AND, on the 7-day view, the vertical day
+//separator overlay so the 168 hourly bars don't read as one long
+//flat strip. The separator is drawn via a custom Chart.js plugin
+//(no extra deps) that paints a thin vertical line at every
+//midnight boundary based on the bucket label parsing.
+function renderBars(canvasId, series, range, accent)
 {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
+
+    const plugins = [];
+    if (range === '7d')
+    {
+        plugins.push({
+            id: 'day-separators',
+            afterDatasetsDraw(chart)
+            {
+                const xs = chart.scales.x;
+                const ya = chart.scales.y;
+                const ctx2 = chart.ctx;
+                ctx2.save();
+                ctx2.strokeStyle = readCssVar('--border', 'rgba(255,255,255,0.2)');
+                ctx2.lineWidth = 1;
+                ctx2.setLineDash([2, 3]);
+                series.forEach((b, i) =>
+                {
+                    if (b.label.endsWith('T00') && i > 0)
+                    {
+                        const x = xs.getPixelForValue(i) - (xs.getPixelForValue(1) - xs.getPixelForValue(0)) / 2;
+                        ctx2.beginPath();
+                        ctx2.moveTo(x, ya.top);
+                        ctx2.lineTo(x, ya.bottom);
+                        ctx2.stroke();
+                    }
+                });
+                ctx2.restore();
+            },
+        });
+    }
+
     return new Chart(ctx, {
         type: 'bar',
         data: {
-            labels:   series.map((s) => formatXLabel(s.label)),
+            labels:   series.map((s) => formatXLabel(s.label, range)),
             datasets: [{
                 data: series.map((s) => s.count),
                 backgroundColor: accent,
@@ -155,15 +179,23 @@ function renderBars(canvasId, series, accent, labelFmt = (l) => l)
                 maxBarThickness: 24,
             }],
         },
-        options: barOptions(labelFmt),
+        options: barOptions(fullTooltipLabel),
+        plugins,
     });
 }
 
-//Compact X-axis label for an hourly or daily ISO bucket key.
-//"2026-05-24T13" -> "13h"; "2026-05-24" -> "05-24".
-function formatXLabel(key)
+function formatXLabel(key, range)
 {
-    if (key.length === 13) return key.slice(11) + 'h';
+    //24h tab: 24 hourly bars, show just the hour
+    if (range === '24h' && key.length === 13) return key.slice(11) + 'h';
+    //7d tab: 168 hourly bars, show date only on midnight buckets,
+    //the rest are empty strings so the X axis doesn't turn into a
+    //wall of duplicates
+    if (range === '7d' && key.length === 13)
+    {
+        return key.endsWith('T00') ? key.slice(5, 10) : '';
+    }
+    //30d tab: 30 daily bars, show MM-DD
     return key.slice(5);
 }
 
@@ -173,31 +205,39 @@ function fullTooltipLabel(key)
     return key + ' UTC';
 }
 
-//Module state: keep references to the rendered Chart instances so
-//a tab switch / theme flip can destroy + re-mount cleanly.
-let histogramChart = null;
-let activeRange    = '24h';
-let snapshot       = null;
+//Module state: keep references to chart instances so re-renders
+//(theme flip, range tab change) can destroy + re-mount cleanly.
+const histograms = {
+    visits:      { chart: null, range: '24h', series24: 'hourly_24h',          series7: 'hourly_7d',          series30: 'daily_30d' },
+    conversions: { chart: null, range: '24h', series24: 'conversions_hourly_24h', series7: 'conversions_hourly_7d', series30: 'conversions_daily_30d' },
+    downloads:   { chart: null, range: '24h', series24: 'downloads_hourly_24h',   series7: 'downloads_hourly_7d',   series30: 'downloads_daily_30d' },
+};
+let snapshot = null;
 
-function applyHistogram(range)
+function applyHistogram(name)
 {
     if (!snapshot) return;
-    activeRange = range;
-    document.querySelectorAll('.hist-tab').forEach((t) =>
+    const h = histograms[name];
+    if (!h) return;
+    const root = document.querySelector(`[data-hist="${name}"]`);
+    if (!root) return;
+
+    root.querySelectorAll('.hist-tab').forEach((t) =>
     {
-        const isActive = t.dataset.range === range;
+        const isActive = t.dataset.range === h.range;
         t.classList.toggle('is-active', isActive);
         t.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
 
-    let series, label;
-    if (range === '24h') { series = snapshot.hourly_24h; label = 'visits / hour (last 24 h)'; }
-    else if (range === '7d')  { series = snapshot.hourly_7d;  label = 'visits / hour (last 7 days)'; }
-    else                      { series = snapshot.daily_30d;  label = 'visits / day (last 30 days)'; }
+    let series;
+    if      (h.range === '24h') series = snapshot[h.series24];
+    else if (h.range === '7d')  series = snapshot[h.series7];
+    else                        series = snapshot[h.series30];
+    if (!Array.isArray(series)) series = [];
 
-    if (histogramChart) { histogramChart.destroy(); histogramChart = null; }
+    if (h.chart) { h.chart.destroy(); h.chart = null; }
     const accent = readCssVar('--accent', '#f5a623');
-    histogramChart = renderBars('chart-histogram', series, accent, fullTooltipLabel);
+    h.chart = renderBars(`chart-histogram-${name}`, series, h.range, accent);
 }
 
 async function loadStats()
@@ -218,23 +258,23 @@ async function loadStats()
         return;
     }
 
-    //KPIs
     document.querySelectorAll('[data-kpi]').forEach((el) =>
     {
         const key = el.getAttribute('data-kpi');
         el.textContent = KPI_FMT(snapshot[key]);
     });
 
-    //Doughnut charts
     renderDoughnut('chart-countries', snapshot.countries);
     renderDoughnut('chart-browsers',  snapshot.browsers);
     renderDoughnut('chart-os',        snapshot.operating_systems);
     renderDoughnut('chart-devices',   snapshot.devices);
+    if (Array.isArray(snapshot.referrers))
+    {
+        renderDoughnut('chart-referrers', snapshot.referrers);
+    }
 
-    //Histogram (defaults to 24h)
-    applyHistogram(activeRange);
+    Object.keys(histograms).forEach(applyHistogram);
 
-    //Refresh stamp
     const refreshEl = document.getElementById('stats-fetched-at');
     if (refreshEl && snapshot.fetched_at_unix)
     {
@@ -244,16 +284,21 @@ async function loadStats()
     }
 }
 
-//Wire the histogram tabs once on script load.
-document.querySelectorAll('.hist-tab').forEach((tab) =>
+//Wire each histogram section's tab cluster.
+document.querySelectorAll('.stats-histogram').forEach((section) =>
 {
-    tab.addEventListener('click', () => applyHistogram(tab.dataset.range));
+    const name = section.getAttribute('data-hist');
+    if (!histograms[name]) return;
+    section.querySelectorAll('.hist-tab').forEach((tab) =>
+    {
+        tab.addEventListener('click', () =>
+        {
+            histograms[name].range = tab.dataset.range;
+            applyHistogram(name);
+        });
+    });
 });
 
-//Theme flip cascade: any change to the html data-theme attribute
-//(from a future toggle on this page, or because the user changed
-//it on the main page and came back) re-renders the charts so the
-//slice borders / grid colour / ink colour follow.
 new MutationObserver(() =>
 {
     if (snapshot) loadStats();

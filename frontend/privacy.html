@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index, follow">
+  <title>Helios-Lidar, Privacy</title>
+  <link rel="icon" type="image/png" href="/static/helios-icon.png">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="bg-blur bg-blur--left"  aria-hidden="true"></div>
+  <div class="bg-blur bg-blur--right" aria-hidden="true"></div>
+
+  <main class="privacy-main">
+    <header class="privacy-header">
+      <h1>Privacy policy</h1>
+      <p class="privacy-updated">Last updated: <span id="privacy-updated">2026-05-25</span></p>
+    </header>
+
+    <section class="card privacy-card">
+      <h2>Français</h2>
+
+      <h3>En bref</h3>
+      <p>Helios-Lidar respecte ta vie privée. <strong>Aucun cookie, aucun script de tracking, aucune empreinte numérique</strong> n'est posé sur ton navigateur. Le code source du site et de la carte est entièrement <a href="https://github.com/ReikanYsora/Helios-Lidar" target="_blank" rel="noopener">accessible sur GitHub</a> : ce qui est écrit ici se vérifie ligne par ligne dans le dépôt.</p>
+
+      <h3>Ce qu'on garde</h3>
+      <ul>
+        <li><strong>Logs serveur nginx</strong> : adresse IP, user-agent, page demandée, horodatage, page de provenance. Ce sont les logs techniques standard d'un serveur web, indispensables pour la sécurité (anti-abus) et le debug. Rétention : 30 jours maximum, ensuite ils sont effacés automatiquement.</li>
+        <li><strong>Compteur de conversions</strong> : un simple compteur entier est incrémenté à chaque conversion réussie. Aucune information sur le contenu, l'utilisateur ou la zone géographique convertie n'est associée à ce compteur.</li>
+        <li><strong>Cache pays</strong> : pour afficher la carte des pays visiteurs sur le dashboard /stats, l'IP est envoyée à <a href="https://ip-api.com" target="_blank" rel="noopener">ip-api.com</a> qui renvoie un code pays. Seul le code pays est conservé (pas l'IP ni la position précise).</li>
+      </ul>
+
+      <h3>Ce qu'on NE garde PAS</h3>
+      <ul>
+        <li><strong>Tes fichiers convertis ne sont jamais sauvegardés.</strong> Le COG généré (.tif) reste sur le serveur uniquement le temps que ton navigateur le télécharge, avec un timeout de <strong>10 minutes</strong> après quoi le fichier est effacé automatiquement, qu'il ait été téléchargé ou non. Aucune statistique n'est extraite du contenu de ton fichier (à part le simple +1 sur le compteur de conversions).</li>
+        <li>Aucun cookie n'est posé.</li>
+        <li>Aucun script tiers de tracking (pas de Google Analytics, pas de Facebook Pixel, etc.).</li>
+        <li>Aucun fingerprinting (canvas, WebGL, fonts, etc.).</li>
+        <li>Aucune revente, aucun partage de tes données à un tiers à des fins marketing.</li>
+      </ul>
+
+      <h3>Tes droits</h3>
+      <p>Tu peux à tout moment demander la suppression des entrées de logs liées à ton IP en m'envoyant un email à <a href="mailto:jcremoux@gmail.com">jcremoux@gmail.com</a>. Comme les logs s'effacent automatiquement après 30 jours, attendre suffit aussi.</p>
+
+      <h3>Base légale</h3>
+      <p>Les logs serveur et le geo-lookup sont conservés au titre de l'<strong>intérêt légitime</strong> (art. 6.1.f du RGPD) : sécurité du service et statistiques d'usage agrégées non-individuelles. Aucun consentement explicite n'est requis pour ces opérations.</p>
+
+      <h3>Hébergement</h3>
+      <p>Le serveur est loué chez <strong>OVH</strong> (France), un hébergeur soumis au droit français et européen.</p>
+    </section>
+
+    <section class="card privacy-card">
+      <h2>English</h2>
+
+      <h3>TL;DR</h3>
+      <p>Helios-Lidar respects your privacy. <strong>No cookie, no tracking script, no fingerprint</strong> is set on your browser. The full source code of the site + the card is <a href="https://github.com/ReikanYsora/Helios-Lidar" target="_blank" rel="noopener">open on GitHub</a>: everything written here can be verified line by line in the repository.</p>
+
+      <h3>What we keep</h3>
+      <ul>
+        <li><strong>Nginx server logs</strong>: IP address, user-agent, requested path, timestamp, referrer. Standard technical logs every web server keeps, needed for security (abuse mitigation) and debugging. Retention: 30 days max, after which they're automatically purged.</li>
+        <li><strong>Conversion counter</strong>: a simple integer counter is incremented after each successful pipeline run. No information about the content, the user or the converted region is associated with that counter.</li>
+        <li><strong>Country cache</strong>: to render the visitors-by-country chart on the /stats dashboard, the visitor IP is sent to <a href="https://ip-api.com" target="_blank" rel="noopener">ip-api.com</a> which returns a country code. Only the country code is stored (not the IP, not the precise location).</li>
+      </ul>
+
+      <h3>What we do NOT keep</h3>
+      <ul>
+        <li><strong>Your converted files are never saved.</strong> The generated COG (.tif) stays on the server only long enough for your browser to download it, with a <strong>10-minute</strong> timeout after which the file is automatically deleted, whether downloaded or not. No statistic is extracted from the content of your file (beyond the simple +1 on the conversion counter).</li>
+        <li>No cookie is set.</li>
+        <li>No third-party tracking script (no Google Analytics, no Facebook Pixel, no anything).</li>
+        <li>No fingerprinting (canvas, WebGL, fonts, etc.).</li>
+        <li>No reselling, no sharing of your data with any third party for marketing.</li>
+      </ul>
+
+      <h3>Your rights</h3>
+      <p>You can ask for the log entries linked to your IP to be removed at any time by emailing <a href="mailto:jcremoux@gmail.com">jcremoux@gmail.com</a>. Since logs auto-purge after 30 days, waiting is equally fine.</p>
+
+      <h3>Legal basis</h3>
+      <p>Server logs and geo-lookup are retained under <strong>legitimate interest</strong> (GDPR Art. 6.1.f): service security and aggregated, non-individual usage statistics. No explicit consent is required for these operations.</p>
+
+      <h3>Hosting</h3>
+      <p>The server is rented from <strong>OVH</strong> (France), a host subject to French and European law.</p>
+    </section>
+
+    <footer class="privacy-footer">
+      <a href="/">&larr; Back to Helios-Lidar</a>
+    </footer>
+  </main>
+
+  <script>
+    //Respect the saved site theme so the privacy page lands in the
+    //same palette the visitor picked elsewhere on the site.
+    try {
+      const saved = localStorage.getItem('helios-lidar-site-theme');
+      if (saved === 'light' || saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', saved);
+      }
+    } catch (_) { /* private mode etc */ }
+  </script>
+  <script type="module" src="/static/bg-pointcloud.js"></script>
+</body>
+</html>

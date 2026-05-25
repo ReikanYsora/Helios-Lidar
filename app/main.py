@@ -153,6 +153,12 @@ def index() -> JSONResponse:
     )
 
 
+@app.get("/privacy")
+def privacy_page() -> FileResponse:
+    """Static privacy policy. Linked from the footer."""
+    return FileResponse(FRONTEND_DIR / "privacy.html", media_type="text/html; charset=utf-8")
+
+
 @app.get("/stats")
 def stats_page() -> FileResponse:
     """Hidden visitor-analytics dashboard. Not linked from anywhere
@@ -171,7 +177,11 @@ def api_stats() -> JSONResponse:
     refresh cost negligible. Returns 503 only if the very first
     fetch can't read any log row (e.g. nginx log path unreadable).
     """
-    snap = visitor_stats.get_snapshot(settings.jobs_dir.parent / "stats" / "geo_cache.db")
+    snap = visitor_stats.get_snapshot(
+        settings.jobs_dir.parent / "stats" / "geo_cache.db",
+        stats_store=_stats,
+        downloads_module=helios_downloads,
+    )
     if snap is None:
         return JSONResponse(
             content={"error": "Visitor stats not available yet."},
