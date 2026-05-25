@@ -328,6 +328,9 @@ const histograms = {
         '24h': 'countries_hourly_24h', '7d': 'countries_hourly_7d',
         '30d': 'countries_daily_30d',  '1y': 'countries_daily_1y',
     }, accent: () => readCssVar('--accent', '#f5a623') },
+    growth:        { chart: null, range: '1y', src: {
+        '1y': 'growth_index_1y',
+    }, accent: () => readCssVar('--accent', '#f5a623') },
 };
 let downloadsByVersionChart = null;
 let snapshot = null;
@@ -361,11 +364,90 @@ function applyHistogram(name)
     {
         h.chart = renderCountryLines(`chart-histogram-${name}`, data || {labels: [], datasets: []}, h.range);
     }
+    else if (name === 'growth')
+    {
+        h.chart = renderGrowthIndex(`chart-histogram-${name}`, data || {labels: [], raw: [], ema: [], trend: []});
+        renderGrowthKpis(data || {});
+    }
     else
     {
         const series = Array.isArray(data) ? data : [];
         h.chart = renderBars(`chart-histogram-${name}`, series, h.range, h.accent());
     }
+}
+
+//Three-layer line chart for the composite growth index.
+//  - raw daily score   : transparent fill, no line, just a hint
+//  - 7-day EMA         : bold accent line (the "real" trajectory)
+//  - linear trend      : dashed neutral line (where we'd be if the
+//                        last 365 days extrapolated as a straight
+//                        line, ie the average score-points / day)
+//Single 1y range so the eye reads the long-horizon shape rather
+//than chasing a 24h spike.
+function renderGrowthIndex(canvasId, payload)
+{
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return null;
+    const labels    = (payload.labels || []);
+    const labelTxt  = labels.map((l) => l.slice(5));  //MM-DD on the X axis
+    const accent    = readCssVar('--accent', '#f5a623');
+    const inkSoft   = readCssVar('--ink-soft', '#9ba0a6');
+    const opts = lineOptions();
+    opts.plugins.tooltip.callbacks.title = (items) => labels[items[0].dataIndex] + ' UTC';
+    opts.plugins.tooltip.callbacks.label = (item) =>
+    {
+        const v = item.parsed.y;
+        return `${item.dataset.label}: ${v == null ? ',' : Math.round(v).toLocaleString()}`;
+    };
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labelTxt,
+            datasets: [
+                {
+                    label: 'Raw daily score',
+                    data:  payload.raw || [],
+                    borderColor: 'transparent',
+                    backgroundColor: accent + '22',
+                    pointRadius: 0, fill: 'origin',
+                },
+                {
+                    label: '7-day EMA',
+                    data:  payload.ema || [],
+                    borderColor: accent, backgroundColor: 'transparent',
+                    borderWidth: 2.5, tension: 0.25, pointRadius: 0, fill: false,
+                },
+                {
+                    label: 'Linear trend',
+                    data:  payload.trend || [],
+                    borderColor: inkSoft, backgroundColor: 'transparent',
+                    borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false,
+                },
+            ],
+        },
+        options: opts,
+    });
+}
+
+function renderGrowthKpis(payload)
+{
+    const fmtPct = (v) =>
+    {
+        if (v == null || !Number.isFinite(v)) return ',';
+        return (v > 0 ? '+' : '') + v.toFixed(1) + '%';
+    };
+    const setKpi = (id, prefix, value, isPctOrSlope) =>
+    {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const num = (typeof value === 'number') ? value : null;
+        el.textContent = `${prefix} ${isPctOrSlope === 'pct' ? fmtPct(num) : (num == null ? ',' : (num > 0 ? '+' : '') + num.toFixed(1))}`;
+        el.classList.toggle('is-up',   num != null && num > 0);
+        el.classList.toggle('is-down', num != null && num < 0);
+    };
+    setKpi('growth-kpi-wow',   'WoW',     payload.growth_pct_wow, 'pct');
+    setKpi('growth-kpi-mom',   'MoM',     payload.growth_pct_mom, 'pct');
+    setKpi('growth-kpi-slope', 'Slope/d', payload.slope_per_day,  'num');
 }
 
 //Multi-line chart: one line per country, drawn in the SLICE_COLORS
@@ -512,6 +594,7 @@ async function loadStats()
         el.textContent = KPI_FMT(snapshot[key]);
     });
 
+    renderDoughnut('chart-countries', snapshot.countries);
     renderDoughnut('chart-browsers',  snapshot.browsers);
     renderDoughnut('chart-os',        snapshot.operating_systems);
     renderDoughnut('chart-devices',   snapshot.devices);

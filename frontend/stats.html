@@ -58,6 +58,25 @@
       </div>
     </section>
 
+    <!--  Headline composite signal: how is the app growing? Built
+          from a weighted daily sum (unique visitors + 5*conversions
+          + 10*downloads), smoothed with a 7-day EMA, then fit with
+          a least-squares trend line. The two KPI chips on the right
+          read the week-over-week and month-over-month deltas.   -->
+    <section class="card stats-histogram" data-hist="growth">
+      <header class="histogram-header">
+        <h2>Application growth index</h2>
+        <div id="growth-kpis" class="growth-kpis" aria-live="polite">
+          <span class="growth-kpi" id="growth-kpi-wow">WoW ,</span>
+          <span class="growth-kpi" id="growth-kpi-mom">MoM ,</span>
+          <span class="growth-kpi" id="growth-kpi-slope">Slope ,</span>
+        </div>
+      </header>
+      <div class="chart-wrap chart-wrap--wide">
+        <canvas id="chart-histogram-growth"></canvas>
+      </div>
+    </section>
+
     <!--  Three histograms with shared 24h / 7d / 30d range tabs. -->
     <section class="card stats-histogram" data-hist="visits">
       <header class="histogram-header">
@@ -144,6 +163,12 @@
     </section>
 
     <section class="stats-grid">
+      <div class="card chart-card">
+        <h3>Country</h3>
+        <div class="chart-wrap">
+          <canvas id="chart-countries"></canvas>
+        </div>
+      </div>
       <div class="card chart-card">
         <h3>Browser</h3>
         <div class="chart-wrap">

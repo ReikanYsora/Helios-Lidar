@@ -382,6 +382,116 @@ def _daily_buckets(rows: list[LogRow], now: datetime, window_days: int) -> list[
     return [{"label": k, "count": v} for k, v in buckets.items()]
 
 
+def _growth_index_daily(visits_1y: list,
+                        conv_ts_1y: list[int],
+                        dl_daily_1y: list[dict],
+                        now: datetime,
+                        window_days: int = 365) -> dict:
+    """Build a composite "growth of the app" daily index from the
+    last `window_days` of telemetry.
+
+    Formula (per day):
+        score = unique_visitors + 5 * conversions + 10 * card_downloads
+
+    The weights reflect the funnel cost: a visitor is cheap, a
+    conversion proves real usage of the LiDAR pipeline, a download
+    is a long-term commitment to the card. Weights are intentionally
+    small integers, not tuned, so the curve stays interpretable
+    (10 means "one download today = ten visits today" in score
+    space).
+
+    On top of the raw daily score we layer:
+        - 7-day EMA (exponentially-weighted moving average,
+          alpha = 2/(N+1) with N=7) to absorb day-of-week noise
+        - linear least-squares trend fit on the EMA, which gives
+          the average score-points / day slope we report as
+          `slope_per_day`
+        - week-over-week growth %: last-7-day avg vs prior-7-day avg
+        - month-over-month growth %: last-30-day avg vs prior-30-day avg
+
+    Returns a Chart.js-friendly payload plus the scalar growth
+    metrics for KPI display.
+    """
+    start_day = (now - timedelta(days=window_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    labels: list[str] = [(start_day + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(window_days)]
+    key_to_index = {k: i for i, k in enumerate(labels)}
+
+    unique_ips_per_day: list[set] = [set() for _ in range(window_days)]
+    for v in visits_1y:
+        k = v.ts.strftime("%Y-%m-%d")
+        i = key_to_index.get(k)
+        if i is not None:
+            unique_ips_per_day[i].add(v.ip)
+    uniques = [len(s) for s in unique_ips_per_day]
+
+    conv = [0] * window_days
+    for ts in conv_ts_1y:
+        k = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
+        i = key_to_index.get(k)
+        if i is not None:
+            conv[i] += 1
+
+    dl = [0] * window_days
+    for b in dl_daily_1y:
+        i = key_to_index.get(b.get("label"))
+        if i is not None:
+            dl[i] = int(b.get("count", 0))
+
+    W_VISIT, W_CONV, W_DL = 1, 5, 10
+    raw = [uniques[i] * W_VISIT + conv[i] * W_CONV + dl[i] * W_DL for i in range(window_days)]
+
+    #7-day EMA: smooth out weekly seasonality. Seed with the raw
+    #value at index 0 so the very first day isn't pulled toward
+    #zero before any history has accumulated.
+    alpha = 2.0 / (7 + 1)
+    ema: list[float] = []
+    prev = float(raw[0]) if raw else 0.0
+    for v in raw:
+        prev = alpha * float(v) + (1.0 - alpha) * prev
+        ema.append(round(prev, 2))
+
+    #Linear regression on the EMA (least squares, closed form).
+    #Slope is "score points per day" averaged across the window;
+    #the trend line lets the eye see whether we're decelerating
+    #even when the EMA still climbs.
+    n = len(ema)
+    slope = 0.0
+    intercept = ema[0] if ema else 0.0
+    if n >= 2:
+        xs = list(range(n))
+        mean_x = sum(xs) / n
+        mean_y = sum(ema) / n
+        num = sum((xs[i] - mean_x) * (ema[i] - mean_y) for i in range(n))
+        den = sum((xs[i] - mean_x) ** 2 for i in range(n))
+        if den > 0:
+            slope = num / den
+            intercept = mean_y - slope * mean_x
+    trend = [round(slope * x + intercept, 2) for x in range(n)]
+
+    def _safe_mean(xs: list[float]) -> float:
+        return (sum(xs) / len(xs)) if xs else 0.0
+
+    def _growth_pct(window: int) -> float | None:
+        if n < window * 2:
+            return None
+        recent = _safe_mean(raw[-window:])
+        prior  = _safe_mean(raw[-window * 2:-window])
+        if prior <= 0:
+            return None
+        return round(100.0 * (recent - prior) / prior, 1)
+
+    return {
+        "labels":         labels,
+        "raw":            raw,
+        "ema":            ema,
+        "trend":          trend,
+        "slope_per_day":  round(slope, 3),
+        "growth_pct_wow": _growth_pct(7),
+        "growth_pct_mom": _growth_pct(30),
+        "weights":        {"visitor": W_VISIT, "conversion": W_CONV, "download": W_DL},
+    }
+
+
 def _per_country_buckets(visits: list, geo: dict, now: datetime,
                          window_hours: int | None = None,
                          window_days: int | None = None,
@@ -714,6 +824,10 @@ class StatsSnapshot(NamedTuple):
     countries_hourly_7d:  dict
     countries_daily_30d:  dict
     countries_daily_1y:   dict
+    #Composite "growth of the app" daily index over the last 1 y,
+    #weighted sum of unique visitors + conversions + downloads, with
+    #a 7-day EMA + linear trend overlay. See _growth_index_daily().
+    growth_index_1y: dict
 
 
 CACHE_TTL_SECONDS = 5 * 60
@@ -876,6 +990,7 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
 
         #Conversions 1y
         conv_1y = 0
+        conv_ts_1y: list[int] = []
         conv_daily_1y: list[dict] = _ts_daily_buckets([], now, 365)
         if stats_store is not None:
             try:
@@ -985,6 +1100,7 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
             countries_hourly_7d =_per_country_buckets(visits_7d,  cached_geo, now, window_hours=24 * 7),
             countries_daily_30d =_per_country_buckets(visits_30d, cached_geo, now, window_days=30),
             countries_daily_1y  =_per_country_buckets(visits_1y,  geo_1y,     now, window_days=365),
+            growth_index_1y=_growth_index_daily(visits_1y, conv_ts_1y, dl_daily_1y, now, window_days=365),
         )
         _cache = snapshot
         return snapshot
@@ -1048,4 +1164,5 @@ def snapshot_to_dict(snap: StatsSnapshot) -> dict:
         "countries_hourly_7d":     snap.countries_hourly_7d,
         "countries_daily_30d":     snap.countries_daily_30d,
         "countries_daily_1y":      snap.countries_daily_1y,
+        "growth_index_1y":         snap.growth_index_1y,
     }

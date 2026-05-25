@@ -1824,6 +1824,31 @@ footer .sep
     background: var(--accent);
     color: #fff;
 }
+/*  Growth-index KPIs ride to the right of the histogram heading.
+    Pill style same family as the version chip in the lang-strip
+    so the dashboard reads as one consistent surface.             */
+.growth-kpis
+{
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+}
+.growth-kpi
+{
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--ink-soft);
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.growth-kpi.is-up   { color: #22c55e; border-color: rgba(34, 197, 94, 0.4); }
+.growth-kpi.is-down { color: #ef4444; border-color: rgba(239, 68, 68, 0.4); }
 .chart-wrap
 {
     position: relative;
