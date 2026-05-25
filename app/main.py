@@ -26,7 +26,7 @@ from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
-from app import helios_downloads, jobs as job_store, lidar_sources
+from app import helios_downloads, jobs as job_store, lidar_sources, visitor_stats
 from app.config import settings
 from app.jobs import Job, JobStatus
 from app.stats import StatsStore
@@ -150,6 +150,36 @@ def index() -> JSONResponse:
             "docs": f"{settings.public_base_url}/docs",
             "frontend": f"{settings.public_base_url}/",
         }
+    )
+
+
+@app.get("/stats")
+def stats_page() -> FileResponse:
+    """Hidden visitor-analytics dashboard. Not linked from anywhere
+    on the public site + disallowed in robots.txt. The HTML page
+    fetches /api/stats on load and renders the doughnut + bar
+    charts via Chart.js.
+    """
+    page = FRONTEND_DIR / "stats.html"
+    return FileResponse(page, media_type="text/html; charset=utf-8")
+
+
+@app.get("/api/stats")
+def api_stats() -> JSONResponse:
+    """Aggregated visitor stats parsed from the nginx access logs.
+    In-process cache (5 min TTL) inside `visitor_stats` keeps
+    refresh cost negligible. Returns 503 only if the very first
+    fetch can't read any log row (e.g. nginx log path unreadable).
+    """
+    snap = visitor_stats.get_snapshot(settings.jobs_dir.parent / "stats" / "geo_cache.db")
+    if snap is None:
+        return JSONResponse(
+            content={"error": "Visitor stats not available yet."},
+            status_code=503,
+        )
+    return JSONResponse(
+        content=visitor_stats.snapshot_to_dict(snap),
+        headers={"cache-control": "public, max-age=120"},
     )
 
 

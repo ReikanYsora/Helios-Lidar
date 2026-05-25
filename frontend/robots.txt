@@ -3,5 +3,6 @@ Allow: /
 Disallow: /api/
 Disallow: /jobs
 Disallow: /output/
+Disallow: /stats
 
 Sitemap: https://helios-lidar.org/sitemap.xml

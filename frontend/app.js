@@ -731,7 +731,36 @@ function wireDemoThemeToggle()
 const _initialTheme = getSavedTheme();
 applySiteTheme(_initialTheme);
 
+//GitHub star buttons: read every [data-gh-repo] anchor on the
+//page and replace its "," placeholder count with the live star
+//total fetched from api.github.com. Anonymous + cached client-
+//side by the browser; only fires once per page load.
+async function loadGitHubStars()
+{
+    const buttons = document.querySelectorAll('.gh-star-btn[data-gh-repo]');
+    if (!buttons.length) return;
+    for (const btn of buttons)
+    {
+        const repo = btn.getAttribute('data-gh-repo');
+        const slot = btn.querySelector('.gh-star-count');
+        if (!repo || !slot) continue;
+        try
+        {
+            const resp = await fetch(`https://api.github.com/repos/${repo}`, { credentials: 'omit' });
+            if (!resp.ok) continue;
+            const data = await resp.json();
+            const n = Number(data.stargazers_count);
+            if (!Number.isFinite(n)) continue;
+            try { slot.textContent = n.toLocaleString(); }
+            catch (_) { slot.textContent = String(n); }
+            slot.removeAttribute('data-loading');
+        }
+        catch (_) { /* silent: stars are flavour, not critical */ }
+    }
+}
+
 //Fire as soon as the DOM is parsed. The fetch piggy-backs on the
 //main script's module-load, no extra HTTP round-trip.
 loadCommunityStats();
+loadGitHubStars();
 wireDemoThemeToggle();

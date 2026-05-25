@@ -371,6 +371,22 @@
         welcome.
       </p>
       <p class="thanks-line" data-i18n="thanks">Thank you!</p>
+      <!--  GitHub stars row: two buttons pulling the live star
+            count from api.github.com on load; click opens the repo
+            in a new tab where the visitor can hit the Star button
+            one click in.                                          -->
+      <div class="gh-stars-row" id="gh-stars-row">
+        <a class="gh-star-btn" href="https://github.com/ReikanYsora/Helios" target="_blank" rel="noopener" data-gh-repo="ReikanYsora/Helios" aria-label="Star Helios on GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+          <span class="gh-star-name">Helios</span>
+          <span class="gh-star-count" data-loading="true">,</span>
+        </a>
+        <a class="gh-star-btn" href="https://github.com/ReikanYsora/Helios-Lidar" target="_blank" rel="noopener" data-gh-repo="ReikanYsora/Helios-Lidar" aria-label="Star Helios-Lidar on GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+          <span class="gh-star-name">Helios-Lidar</span>
+          <span class="gh-star-count" data-loading="true">,</span>
+        </a>
+      </div>
       <p class="credits" data-i18n="credits">
         The bring-your-own local-nDSM provider in the Helios card and the
         Python preparation toolchain this pipeline is built on top of were
