@@ -12,7 +12,27 @@
   <div class="bg-blur bg-blur--left"  aria-hidden="true"></div>
   <div class="bg-blur bg-blur--right" aria-hidden="true"></div>
 
-  <main class="stats-main">
+  <div class="lang-strip">
+    <div class="lang-strip-left">
+      <a class="repo-link" href="https://github.com/ReikanYsora/Helios" target="_blank" rel="noopener" aria-label="Helios GitHub repository">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+      </a>
+      <span class="site-version" aria-label="Site version">v1.6.4</span>
+    </div>
+    <a class="lang-strip-home" href="/">&larr; Home</a>
+  </div>
+
+  <main>
+    <header>
+      <div class="brand-banner">
+        <img src="/static/helios-icon.png" alt="Helios" class="brand-icon">
+      </div>
+      <div class="brand-strip">
+        <span class="brand-strip-text">A 3D solar card for <a href="https://www.home-assistant.io/" target="_blank" rel="noopener">Home Assistant</a>, and the tool that feeds it your LiDAR data</span>
+      </div>
+    </header>
+
+    <div class="stats-main">
     <header class="stats-header">
       <h1>Helios Analytics</h1>
     </header>
@@ -44,6 +64,7 @@
           <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
           <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
           <button type="button" class="hist-tab"           data-range="30d" role="tab" aria-selected="false">30 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
         </div>
       </header>
       <div class="chart-wrap chart-wrap--wide">
@@ -58,6 +79,7 @@
           <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
           <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
           <button type="button" class="hist-tab"           data-range="30d" role="tab" aria-selected="false">30 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
         </div>
       </header>
       <div class="chart-wrap chart-wrap--wide">
@@ -72,10 +94,40 @@
           <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
           <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
           <button type="button" class="hist-tab"           data-range="30d" role="tab" aria-selected="false">30 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
         </div>
       </header>
       <div class="chart-wrap chart-wrap--wide">
         <canvas id="chart-histogram-downloads"></canvas>
+      </div>
+    </section>
+
+    <section class="card stats-histogram" data-hist="donations">
+      <header class="histogram-header">
+        <h2>Donations (Buy Me a Coffee)</h2>
+        <div class="histogram-tabs" role="tablist" aria-label="Time range">
+          <button type="button" class="hist-tab is-active" data-range="30d" role="tab" aria-selected="true">30 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
+        </div>
+      </header>
+      <div class="chart-wrap chart-wrap--wide">
+        <canvas id="chart-histogram-donations"></canvas>
+      </div>
+      <p class="donations-note" id="donations-note"></p>
+    </section>
+
+    <section class="card stats-histogram" data-hist="server">
+      <header class="histogram-header">
+        <h2>Server load over time</h2>
+        <div class="histogram-tabs" role="tablist" aria-label="Time range">
+          <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
+          <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
+          <button type="button" class="hist-tab"           data-range="30d" role="tab" aria-selected="false">30 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
+        </div>
+      </header>
+      <div class="chart-wrap chart-wrap--wide">
+        <canvas id="chart-histogram-server"></canvas>
       </div>
     </section>
 
@@ -116,7 +168,32 @@
       <a href="/">&larr; Back to Helios-Lidar</a>
       <span class="stats-refresh">Last refresh: <span id="stats-fetched-at">,</span></span>
     </footer>
+    </div>
   </main>
+
+  <footer class="footer-glow">
+    <div class="footer-inner">
+      <a class="footer-link" href="https://github.com/ReikanYsora/Helios-Lidar" target="_blank" rel="noopener">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+        <span>Helios-Lidar</span>
+      </a>
+      <span class="sep">&mdash;</span>
+      <a class="footer-link" href="https://github.com/ReikanYsora/Helios" target="_blank" rel="noopener">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+        <span>Helios card</span>
+      </a>
+      <span class="sep">&mdash;</span>
+      <a class="footer-link" href="mailto:jcremoux@gmail.com">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 5h18a1 1 0 0 1 1 1v.4l-10 6.1L2 6.4V6a1 1 0 0 1 1-1zm19 4.3V18a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V9.3l9.5 5.8a1 1 0 0 0 1 0L22 9.3z"/></svg>
+        <span>Contact me</span>
+      </a>
+      <span class="sep">&mdash;</span>
+      <a class="footer-link" href="/privacy">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2 4 5v6.5c0 4.8 3.4 9.2 8 10.5 4.6-1.3 8-5.7 8-10.5V5l-8-3zm-1 14-4-4 1.4-1.4 2.6 2.6 5.6-5.6L18 9l-7 7z"/></svg>
+        <span>Privacy</span>
+      </a>
+    </div>
+  </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script type="module" src="/static/stats.js"></script>

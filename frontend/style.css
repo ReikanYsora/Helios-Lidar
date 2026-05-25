@@ -254,6 +254,23 @@ header h1
     height: 18px;
     display: block;
 }
+.lang-strip-home
+{
+    color: var(--lang-strip-ink);
+    font-size: 12px;
+    text-decoration: none;
+}
+.lang-strip-home:hover
+{
+    color: var(--accent);
+}
+.donations-note
+{
+    margin: 10px 0 0;
+    color: var(--ink-soft);
+    font-size: 12px;
+    text-align: right;
+}
 
 .site-version
 {
@@ -1843,6 +1860,10 @@ footer .sep
     margin-top: 14px;
     display: flex;
     justify-content: center;
+    /*  Force the BMaC badge onto its own row inside the flex-wrap
+        footer-inner cluster: flex-basis 100 % means it always
+        breaks the line, no matter how narrow the viewport is.   */
+    flex-basis: 100%;
 }
 
 .bmc-row img

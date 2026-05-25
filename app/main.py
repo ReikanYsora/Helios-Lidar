@@ -22,11 +22,15 @@ import threading
 import time
 from pathlib import Path
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+import os
+import secrets
 
-from app import helios_downloads, jobs as job_store, lidar_sources, visitor_stats
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+
+from app import helios_downloads, jobs as job_store, lidar_sources, server_stats, visitor_stats
 from app.config import settings
 from app.jobs import Job, JobStatus
 from app.stats import StatsStore
@@ -85,6 +89,12 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 #one uvicorn worker and StatsStore serialises its own writes.
 _stats = StatsStore(settings.jobs_dir.parent / "stats" / "stats.db")
 
+#Server load sampler: writes one (load, mem, disk) row per minute
+#into stats.db. Started in-process so we don't need a separate
+#cron job; daemon thread so it exits cleanly with the worker.
+_server_sampler = server_stats.ServerSampler(settings.jobs_dir.parent / "stats" / "stats.db")
+_server_sampler.start()
+
 
 @app.get("/api/conversions-count")
 def conversions_count() -> JSONResponse:
@@ -107,7 +117,14 @@ def helios_downloads_endpoint() -> JSONResponse:
     per-version breakdown. Falls back to the stale cache on GitHub
     errors; returns 503 only when we never managed a cold fetch.
     """
-    snap = helios_downloads.get_downloads_snapshot()
+    #Record a download_snapshots row on every fresh GitHub fetch
+    #so the cumulative-download history accumulates regardless of
+    #whether anyone is hitting the /stats dashboard; the home-page
+    #counter endpoint runs far more often, so this is where most
+    #snapshots come from in steady state.
+    snap = helios_downloads.get_downloads_snapshot(
+        on_fresh=_stats.record_download_snapshot,
+    )
     if snap is None:
         return JSONResponse(
             content={
@@ -153,13 +170,41 @@ def index() -> JSONResponse:
     )
 
 
+#Stats dashboard auth: HTTP Basic with credentials from env vars.
+#When STATS_USERNAME or STATS_PASSWORD is unset the auth is bypassed
+#so a fresh deploy keeps working; once both are set the dashboard
+#(HTML + JSON) requires the credentials. constant-time compare to
+#avoid trivial timing attacks.
+_stats_auth = HTTPBasic(realm="Helios Analytics", auto_error=False)
+
+
+def _stats_credentials_required() -> bool:
+    return bool(os.environ.get("STATS_USERNAME") and os.environ.get("STATS_PASSWORD"))
+
+
+def _check_stats_auth(creds: HTTPBasicCredentials | None = Depends(_stats_auth)) -> None:
+    if not _stats_credentials_required():
+        return
+    expected_user = os.environ.get("STATS_USERNAME", "")
+    expected_pass = os.environ.get("STATS_PASSWORD", "")
+    if creds is None or not (
+        secrets.compare_digest(creds.username, expected_user)
+        and secrets.compare_digest(creds.password, expected_pass)
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": 'Basic realm="Helios Analytics"'},
+        )
+
+
 @app.get("/privacy")
 def privacy_page() -> FileResponse:
     """Static privacy policy. Linked from the footer."""
     return FileResponse(FRONTEND_DIR / "privacy.html", media_type="text/html; charset=utf-8")
 
 
-@app.get("/stats")
+@app.get("/stats", dependencies=[Depends(_check_stats_auth)])
 def stats_page() -> FileResponse:
     """Hidden visitor-analytics dashboard. Not linked from anywhere
     on the public site + disallowed in robots.txt. The HTML page
@@ -170,7 +215,7 @@ def stats_page() -> FileResponse:
     return FileResponse(page, media_type="text/html; charset=utf-8")
 
 
-@app.get("/api/stats")
+@app.get("/api/stats", dependencies=[Depends(_check_stats_auth)])
 def api_stats() -> JSONResponse:
     """Aggregated visitor stats parsed from the nginx access logs.
     In-process cache (5 min TTL) inside `visitor_stats` keeps
@@ -181,6 +226,7 @@ def api_stats() -> JSONResponse:
         settings.jobs_dir.parent / "stats" / "geo_cache.db",
         stats_store=_stats,
         downloads_module=helios_downloads,
+        server_sampler=_server_sampler,
     )
     if snap is None:
         return JSONResponse(

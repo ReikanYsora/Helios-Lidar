@@ -155,15 +155,15 @@ class LogRow(NamedTuple):
 
 def _iter_log_files(since: datetime) -> Iterator[Path]:
     """Yield the nginx access logs that could contain entries newer
-    than `since`, newest first. Logs older than `since`'s day are
-    skipped, both by filename order and by lazy mtime check.
+    than `since`, oldest file first so rows accumulate chronologically.
+    Files whose mtime predates the window are skipped.
     """
     if not NGINX_LOG_DIR.is_dir():
         return
     candidates = sorted(NGINX_LOG_DIR.glob(f"{NGINX_LOG_NAME}*"))
-    #Reverse so we visit access.log.30.gz before .log.1 etc. We
-    #actually want the OLDEST file first so the parser sees rows
-    #in chronological order; reverse-sorted by suffix gives that.
+    #access.log -> 0, access.log.1 -> -1, access.log.10.gz -> -10, etc.
+    #Sort so the highest suffix (oldest archive) comes first, then
+    #down to access.log (newest) last; chronological order.
     def _sort_key(p: Path) -> int:
         name = p.name
         if name == NGINX_LOG_NAME:
@@ -188,7 +188,7 @@ def _open_log(path: Path):
     return path.open("r", encoding="utf-8", errors="replace")
 
 
-def parse_rows(since: datetime, max_rows: int = 500_000) -> list[LogRow]:
+def parse_rows(since: datetime, max_rows: int = 2_000_000) -> list[LogRow]:
     """Read every nginx access log file potentially newer than
     `since` and return matching rows. `max_rows` caps memory in
     pathological cases (large bursts).
@@ -397,6 +397,22 @@ def _ts_hourly_buckets(timestamps: list[int], now: datetime, window_hours: int) 
     return [{"label": k, "count": v} for k, v in buckets.items()]
 
 
+def _bmac_daily_amounts(donations, now: datetime, window_days: int) -> list[dict]:
+    """Sum donation amounts per day over the last `window_days`.
+    Returns one bucket per day even when empty so the chart canvas
+    keeps a stable width."""
+    buckets: dict[str, float] = {}
+    start = (now - timedelta(days=window_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    for i in range(window_days):
+        key = (start + timedelta(days=i)).strftime("%Y-%m-%d")
+        buckets[key] = 0.0
+    for d in donations:
+        key = datetime.fromtimestamp(d.ts_unix, tz=timezone.utc).strftime("%Y-%m-%d")
+        if key in buckets:
+            buckets[key] += float(d.amount)
+    return [{"label": k, "count": round(v, 2)} for k, v in buckets.items()]
+
+
 def _ts_daily_buckets(timestamps: list[int], now: datetime, window_days: int) -> list[dict]:
     buckets: dict[str, int] = {}
     start = (now - timedelta(days=window_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -470,6 +486,9 @@ class StatsSnapshot(NamedTuple):
     hourly_24h: list[dict]
     hourly_7d: list[dict]
     daily_30d: list[dict]
+    daily_1y: list[dict]
+    total_visits_1y: int
+    unique_visitors_1y: int
     countries: list[dict]
     browsers: list[dict]
     operating_systems: list[dict]
@@ -480,9 +499,11 @@ class StatsSnapshot(NamedTuple):
     conversions_24h: int
     conversions_7d: int
     conversions_30d: int
+    conversions_1y: int
     conversions_hourly_24h: list[dict]
     conversions_hourly_7d: list[dict]
     conversions_daily_30d: list[dict]
+    conversions_daily_1y: list[dict]
     #Download histograms (deltas between download_snapshots rows).
     #Sparse until enough snapshots have accumulated; the dashboard
     #renders the zero-padded buckets either way so the canvas size
@@ -491,9 +512,26 @@ class StatsSnapshot(NamedTuple):
     downloads_24h: int
     downloads_7d: int
     downloads_30d: int
+    downloads_1y: int
     downloads_hourly_24h: list[dict]
     downloads_hourly_7d: list[dict]
     downloads_daily_30d: list[dict]
+    downloads_daily_1y: list[dict]
+    #BMaC donations (empty unless the BMAC_TOKEN env var is set).
+    donations_configured: bool
+    donations_total_amount: float
+    donations_24h_amount: float
+    donations_7d_amount: float
+    donations_30d_amount: float
+    donations_1y_amount: float
+    donations_daily_30d: list[dict]
+    donations_daily_1y: list[dict]
+    #Server-load samples (load_1m / mem_used_pct / disk_used_pct
+    #averaged per bucket). Hourly over 24 h; daily for 7d / 30d / 1y.
+    server_hourly_24h: dict
+    server_daily_7d:   dict
+    server_daily_30d:  dict
+    server_daily_1y:   dict
 
 
 CACHE_TTL_SECONDS = 5 * 60
@@ -502,7 +540,8 @@ _cache_lock = threading.Lock()
 _geo: GeoCache | None = None
 
 
-def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None) -> StatsSnapshot | None:
+def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
+                 server_sampler=None) -> StatsSnapshot | None:
     """Return the cached snapshot if fresh, otherwise rebuild it
     from the current log files. Returns None only on a complete
     failure (nginx logs unreadable AND no cache yet).
@@ -523,12 +562,14 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None) -> 
             return _cache
 
         now = datetime.now(timezone.utc)
+        since_1y  = now - timedelta(days=365)
         since_30d = now - timedelta(days=30)
-        rows_30d = parse_rows(since_30d)
-        visits_30d = _filter_human_visits(rows_30d)
-        if not rows_30d:
-            log.warning("no nginx log rows found in the last 30 days")
+        rows_1y = parse_rows(since_1y)
+        visits_1y = _filter_human_visits(rows_1y)
+        if not rows_1y:
+            log.warning("no nginx log rows found in the last year")
             return _cache
+        visits_30d = [v for v in visits_1y if v.ts >= since_30d]
 
         since_7d = now - timedelta(days=7)
         since_24h = now - timedelta(hours=24)
@@ -592,6 +633,8 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None) -> 
         dl_hourly_24h: list[dict] = _ts_hourly_buckets([], now, 24)
         dl_hourly_7d:  list[dict] = _ts_hourly_buckets([], now, 24 * 7)
         dl_daily_30d:  list[dict] = _ts_daily_buckets([],  now, 30)
+        dl_1y = 0
+        dl_daily_1y: list[dict]  = _ts_daily_buckets([],  now, 365)
         if downloads_module is not None and stats_store is not None:
             try:
                 dl_snap = downloads_module.get_downloads_snapshot(
@@ -602,34 +645,95 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None) -> 
                 hist_24h_unix = int(since_24h.timestamp())
                 hist_7d_unix  = int(since_7d.timestamp())
                 hist_30d_unix = int(since_30d.timestamp())
-                snaps_30d = stats_store.download_snapshots(hist_30d_unix)
+                hist_1y_unix  = int(since_1y.timestamp())
+                snaps_1y  = stats_store.download_snapshots(hist_1y_unix)
+                baseline_1y  = stats_store.last_download_snapshot_before(hist_1y_unix)
                 baseline_30d = stats_store.last_download_snapshot_before(hist_30d_unix)
                 baseline_7d  = stats_store.last_download_snapshot_before(hist_7d_unix)
                 baseline_24h = stats_store.last_download_snapshot_before(hist_24h_unix)
-                #Window-scoped baselines: re-use snaps_30d as input
-                #but filter on the relevant window.
-                snaps_7d  = [s for s in snaps_30d if s[0] >= hist_7d_unix]
-                snaps_24h = [s for s in snaps_30d if s[0] >= hist_24h_unix]
+                #Window-scoped slices: re-use snaps_1y filtered by ts.
+                snaps_30d = [s for s in snaps_1y if s[0] >= hist_30d_unix]
+                snaps_7d  = [s for s in snaps_1y if s[0] >= hist_7d_unix]
+                snaps_24h = [s for s in snaps_1y if s[0] >= hist_24h_unix]
+                dl_daily_1y   = _snapshots_to_deltas(snaps_1y,  baseline_1y,  now, window_days=365)
                 dl_daily_30d  = _snapshots_to_deltas(snaps_30d, baseline_30d, now, window_days=30)
                 dl_hourly_7d  = _snapshots_to_deltas(snaps_7d,  baseline_7d,  now, window_hours=24 * 7)
                 dl_hourly_24h = _snapshots_to_deltas(snaps_24h, baseline_24h, now, window_hours=24)
                 dl_24h = sum(b["count"] for b in dl_hourly_24h)
                 dl_7d  = sum(b["count"] for b in dl_hourly_7d)
                 dl_30d = sum(b["count"] for b in dl_daily_30d)
+                dl_1y  = sum(b["count"] for b in dl_daily_1y)
             except Exception:
                 log.exception("download histogram build failed")
+
+        #Conversions 1y
+        conv_1y = 0
+        conv_daily_1y: list[dict] = _ts_daily_buckets([], now, 365)
+        if stats_store is not None:
+            try:
+                conv_ts_1y = stats_store.conversion_timestamps(int(since_1y.timestamp()))
+                conv_1y = len(conv_ts_1y)
+                conv_daily_1y = _ts_daily_buckets(conv_ts_1y, now, 365)
+            except Exception:
+                log.exception("conversion 1y build failed")
+
+        #Server load samples: per-minute rows averaged per bucket.
+        server_hourly_24h = {"load_1m": [], "mem_used_pct": [], "disk_used_pct": []}
+        server_daily_7d   = {"load_1m": [], "mem_used_pct": [], "disk_used_pct": []}
+        server_daily_30d  = {"load_1m": [], "mem_used_pct": [], "disk_used_pct": []}
+        server_daily_1y   = {"load_1m": [], "mem_used_pct": [], "disk_used_pct": []}
+        if server_sampler is not None:
+            try:
+                from app import server_stats as _ss
+                rows_24h = server_sampler.samples_since(int(since_24h.timestamp()))
+                rows_7d  = server_sampler.samples_since(int(since_7d.timestamp()))
+                rows_30d = server_sampler.samples_since(int(since_30d.timestamp()))
+                rows_1y  = server_sampler.samples_since(int(since_1y.timestamp()))
+                server_hourly_24h = _ss.averaged_buckets(rows_24h, now, window_hours=24)
+                server_daily_7d   = _ss.averaged_buckets(rows_7d,  now, window_days=7)
+                server_daily_30d  = _ss.averaged_buckets(rows_30d, now, window_days=30)
+                server_daily_1y   = _ss.averaged_buckets(rows_1y,  now, window_days=365)
+            except Exception:
+                log.exception("server stats build failed")
+
+        #Donations (Buy Me a Coffee). Empty unless BMAC_TOKEN is set
+        #in the systemd env; see app/bmac_stats.py for the module.
+        donations_configured = False
+        donations_total = donations_24h = donations_7d = donations_30d = donations_1y = 0.0
+        donations_daily_30d: list[dict] = []
+        donations_daily_1y:  list[dict] = []
+        try:
+            from app import bmac_stats
+            donations_configured = bmac_stats.is_configured()
+            if donations_configured:
+                bmac_rows = bmac_stats.fetch_all()
+                donations_total = sum(d.amount for d in bmac_rows)
+                donations_24h = sum(d.amount for d in bmac_rows if d.ts_unix >= int(since_24h.timestamp()))
+                donations_7d  = sum(d.amount for d in bmac_rows if d.ts_unix >= int(since_7d.timestamp()))
+                donations_30d = sum(d.amount for d in bmac_rows if d.ts_unix >= int(since_30d.timestamp()))
+                donations_1y  = sum(d.amount for d in bmac_rows if d.ts_unix >= int(since_1y.timestamp()))
+                donations_daily_30d = _bmac_daily_amounts(bmac_rows, now, 30)
+                donations_daily_1y  = _bmac_daily_amounts(bmac_rows, now, 365)
+            else:
+                donations_daily_30d = _ts_daily_buckets([], now, 30)
+                donations_daily_1y  = _ts_daily_buckets([], now, 365)
+        except Exception:
+            log.exception("donations histogram build failed")
 
         snapshot = StatsSnapshot(
             fetched_at_unix=now_unix,
             total_visits_24h=len(visits_24h),
             total_visits_7d=len(visits_7d),
             total_visits_30d=len(visits_30d),
+            total_visits_1y =len(visits_1y),
             unique_visitors_24h=len({v.ip for v in visits_24h}),
             unique_visitors_7d =len({v.ip for v in visits_7d}),
             unique_visitors_30d=len({v.ip for v in visits_30d}),
+            unique_visitors_1y =len({v.ip for v in visits_1y}),
             hourly_24h=_hourly_buckets(visits_24h, now, 24),
             hourly_7d =_hourly_buckets(visits_7d,  now, 24 * 7),
             daily_30d =_daily_buckets(visits_30d, now, 30),
+            daily_1y  =_daily_buckets(visits_1y,  now, 365),
             countries=_top_n(country_counts, n=12),
             browsers =_top_n(browsers,        n=10),
             operating_systems=_top_n(oses,    n=10),
@@ -639,16 +743,32 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None) -> 
             conversions_24h=conv_24h,
             conversions_7d =conv_7d,
             conversions_30d=conv_30d,
+            conversions_1y =conv_1y,
             conversions_hourly_24h=conv_hourly_24h,
             conversions_hourly_7d =conv_hourly_7d,
             conversions_daily_30d =conv_daily_30d,
+            conversions_daily_1y  =conv_daily_1y,
             downloads_total=dl_total,
             downloads_24h=dl_24h,
             downloads_7d =dl_7d,
             downloads_30d=dl_30d,
+            downloads_1y =dl_1y,
             downloads_hourly_24h=dl_hourly_24h,
             downloads_hourly_7d =dl_hourly_7d,
             downloads_daily_30d =dl_daily_30d,
+            downloads_daily_1y  =dl_daily_1y,
+            donations_configured=donations_configured,
+            donations_total_amount=round(donations_total, 2),
+            donations_24h_amount =round(donations_24h, 2),
+            donations_7d_amount  =round(donations_7d, 2),
+            donations_30d_amount =round(donations_30d, 2),
+            donations_1y_amount  =round(donations_1y, 2),
+            donations_daily_30d  =donations_daily_30d,
+            donations_daily_1y   =donations_daily_1y,
+            server_hourly_24h=server_hourly_24h,
+            server_daily_7d  =server_daily_7d,
+            server_daily_30d =server_daily_30d,
+            server_daily_1y  =server_daily_1y,
         )
         _cache = snapshot
         return snapshot
@@ -663,9 +783,12 @@ def snapshot_to_dict(snap: StatsSnapshot) -> dict:
         "unique_visitors_24h": snap.unique_visitors_24h,
         "unique_visitors_7d":  snap.unique_visitors_7d,
         "unique_visitors_30d": snap.unique_visitors_30d,
+        "total_visits_1y": snap.total_visits_1y,
+        "unique_visitors_1y": snap.unique_visitors_1y,
         "hourly_24h": snap.hourly_24h,
         "hourly_7d":  snap.hourly_7d,
         "daily_30d":  snap.daily_30d,
+        "daily_1y":   snap.daily_1y,
         "countries":  snap.countries,
         "browsers":   snap.browsers,
         "operating_systems": snap.operating_systems,
@@ -675,14 +798,30 @@ def snapshot_to_dict(snap: StatsSnapshot) -> dict:
         "conversions_24h":   snap.conversions_24h,
         "conversions_7d":    snap.conversions_7d,
         "conversions_30d":   snap.conversions_30d,
+        "conversions_1y":    snap.conversions_1y,
         "conversions_hourly_24h": snap.conversions_hourly_24h,
         "conversions_hourly_7d":  snap.conversions_hourly_7d,
         "conversions_daily_30d":  snap.conversions_daily_30d,
+        "conversions_daily_1y":   snap.conversions_daily_1y,
         "downloads_total": snap.downloads_total,
         "downloads_24h":   snap.downloads_24h,
         "downloads_7d":    snap.downloads_7d,
         "downloads_30d":   snap.downloads_30d,
+        "downloads_1y":    snap.downloads_1y,
         "downloads_hourly_24h": snap.downloads_hourly_24h,
         "downloads_hourly_7d":  snap.downloads_hourly_7d,
         "downloads_daily_30d":  snap.downloads_daily_30d,
+        "downloads_daily_1y":   snap.downloads_daily_1y,
+        "donations_configured":    snap.donations_configured,
+        "donations_total_amount":  snap.donations_total_amount,
+        "donations_24h_amount":    snap.donations_24h_amount,
+        "donations_7d_amount":     snap.donations_7d_amount,
+        "donations_30d_amount":    snap.donations_30d_amount,
+        "donations_1y_amount":     snap.donations_1y_amount,
+        "donations_daily_30d":     snap.donations_daily_30d,
+        "donations_daily_1y":      snap.donations_daily_1y,
+        "server_hourly_24h": snap.server_hourly_24h,
+        "server_daily_7d":   snap.server_daily_7d,
+        "server_daily_30d":  snap.server_daily_30d,
+        "server_daily_1y":   snap.server_daily_1y,
     }
