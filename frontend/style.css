@@ -123,31 +123,43 @@ main
     height + body drops its 100vh minimum so the footer-glow
     sits flush under the last content row, no leftover viewport
     space to distribute as a visible gap.                       */
-/*  Block layout (not flex) on page-short bodies + zero bottom
-    padding / margin on main so nothing leaves a visible gap
-    between the inner page footer and the page-wide footer-glow. */
-html.page-short,
+/*  Sticky-footer + inner-bottom anchor pattern for /stats and
+    /privacy: body fills the viewport vertically (flex column,
+    min-height 100vh), main grows to absorb the slack, and inside
+    main the .stats-main / .privacy-main wrapper becomes a flex
+    column too so its own footer (Back link + last-refresh
+    stamp) pins to the bottom of main via margin-top: auto. The
+    page-wide footer-glow then sits flush against that inner
+    bottom row, no visible gap anywhere.                         */
 html.page-short body
 {
-    min-height: 0 !important;
-    display: block !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 html.page-short main
 {
-    flex: none !important;
-    padding-bottom: 0 !important;
-    margin-bottom: 0 !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
-html.page-short main > *:last-child
+html.page-short main > header
 {
-    margin-bottom: 0 !important;
-    padding-bottom: 24px !important;
+    flex: 0 0 auto;
 }
-html.page-short footer
+html.page-short main > .stats-main,
+html.page-short main > .privacy-main
 {
-    margin-top: 0 !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+html.page-short .stats-footer,
+html.page-short .privacy-footer
+{
+    margin-top: auto;
 }
 html.page-short[data-page="stats"] main,
 html.page-short main:has(.stats-main)
