@@ -147,9 +147,11 @@
       </div>
     </section>
 
-    <section class="card stats-histogram" data-hist="countries">
+    <!--  Visits per country: scrollable table, flag + name + count,
+          one row per country seen in the window, no truncation.   -->
+    <section class="card stats-histogram" data-table="countries">
       <header class="histogram-header">
-        <h2>Visits per country, over time</h2>
+        <h2>Visits per country</h2>
         <div class="histogram-tabs" role="tablist" aria-label="Time range">
           <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
           <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
@@ -157,18 +159,21 @@
           <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
         </div>
       </header>
-      <div class="chart-wrap chart-wrap--wide">
-        <canvas id="chart-histogram-countries"></canvas>
+      <div class="stats-table-wrap">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th class="stats-table-flag-col" scope="col"></th>
+              <th scope="col">Country</th>
+              <th class="stats-table-num" scope="col">Visits</th>
+            </tr>
+          </thead>
+          <tbody id="table-countries-body"></tbody>
+        </table>
       </div>
     </section>
 
-    <section class="stats-grid">
-      <div class="card chart-card">
-        <h3>Country</h3>
-        <div class="chart-wrap">
-          <canvas id="chart-countries"></canvas>
-        </div>
-      </div>
+    <section class="stats-grid stats-grid--full">
       <div class="card chart-card">
         <h3>Browser</h3>
         <div class="chart-wrap">
@@ -187,11 +192,30 @@
           <canvas id="chart-devices"></canvas>
         </div>
       </div>
-      <div class="card chart-card stats-grid-wide">
-        <h3>Top external referrers</h3>
-        <div class="chart-wrap">
-          <canvas id="chart-referrers"></canvas>
+    </section>
+
+    <!--  External referrers: every host that sent us a visit in
+          the window + the "Direct" bucket for empty Referer.    -->
+    <section class="card stats-histogram" data-table="referrers">
+      <header class="histogram-header">
+        <h2>Top external referrers</h2>
+        <div class="histogram-tabs" role="tablist" aria-label="Time range">
+          <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
+          <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
+          <button type="button" class="hist-tab"           data-range="30d" role="tab" aria-selected="false">30 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
         </div>
+      </header>
+      <div class="stats-table-wrap">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th scope="col">Origin</th>
+              <th class="stats-table-num" scope="col">Visits</th>
+            </tr>
+          </thead>
+          <tbody id="table-referrers-body"></tbody>
+        </table>
       </div>
     </section>
 

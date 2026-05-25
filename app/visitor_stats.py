@@ -492,64 +492,35 @@ def _growth_index_daily(visits_1y: list,
     }
 
 
-def _per_country_buckets(visits: list, geo: dict, now: datetime,
-                         window_hours: int | None = None,
-                         window_days: int | None = None,
-                         top_n: int = 8) -> dict:
-    """Bucket visits by time + country, return a Chart.js payload
-    {labels, datasets: [{country, data}]} suitable for a multi-line
-    chart. Only the top `top_n` countries by total visits in the
-    window get their own line; the rest are folded into "Other" so
-    the chart legend stays readable.
-    """
-    assert (window_hours is None) ^ (window_days is None)
-    if window_hours is not None:
-        start = (now - timedelta(hours=window_hours - 1)).replace(minute=0, second=0, microsecond=0)
-        step  = timedelta(hours=1)
-        count = window_hours
-        fmt   = "%Y-%m-%dT%H"
-    else:
-        start = (now - timedelta(days=window_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
-        step  = timedelta(days=1)
-        count = window_days
-        fmt   = "%Y-%m-%d"
-
-    labels = [(start + i * step).strftime(fmt) for i in range(count)]
-    key_to_index = {k: i for i, k in enumerate(labels)}
-
-    #First pass: total per country in window so we know which
-    #countries to keep as their own line.
-    totals: dict[str, int] = defaultdict(int)
+def _country_table_rows(visits: list, geo: dict) -> list[dict]:
+    """Return a list of `{code, name, count}` rows, one per country
+    seen in `visits`, sorted by visit count descending. `code` is
+    the ISO 3166-1 alpha-2 string (used by the front-end to emit
+    the flag emoji); None when the IP isn't in `geo` (private /
+    unresolved). Unlimited length on purpose, the table scrolls
+    rather than truncates."""
+    counts: dict[tuple[str | None, str], int] = defaultdict(int)
     for v in visits:
-        _, name = geo.get(v.ip, (None, None))
-        totals[name or "Unknown"] += 1
-    if not totals:
-        return {"labels": labels, "datasets": []}
-    ranked = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)
-    keep = {name for name, _ in ranked[:top_n]}
+        cc, name = geo.get(v.ip, (None, None))
+        counts[(cc, name or "Unknown")] += 1
+    rows = [{"code": cc, "name": name, "count": n}
+            for (cc, name), n in counts.items()]
+    rows.sort(key=lambda r: r["count"], reverse=True)
+    return rows
 
-    #Second pass: bucketed counts per kept country (or "Other").
-    by_country: dict[str, list[int]] = {}
+
+def _referrer_table_rows(visits: list) -> list[dict]:
+    """Return a list of `{host, count}` rows for the external
+    referrer of every visit, "Direct" when the request had no
+    referrer, sorted by count descending. Same unlimited-length
+    contract as `_country_table_rows`."""
+    counts: dict[str, int] = defaultdict(int)
     for v in visits:
-        k = v.ts.strftime(fmt)
-        i = key_to_index.get(k)
-        if i is None:
-            continue
-        _, name = geo.get(v.ip, (None, None))
-        bucket_name = (name or "Unknown") if (name or "Unknown") in keep else "Other"
-        if bucket_name not in by_country:
-            by_country[bucket_name] = [0] * count
-        by_country[bucket_name][i] += 1
-
-    #Order datasets the way the user reads them: largest total
-    #first, "Other" last so it never steals the top legend slot.
-    ordered: list[str] = [name for name, _ in ranked if name in by_country and name != "Other"]
-    if "Other" in by_country:
-        ordered.append("Other")
-    return {
-        "labels":   labels,
-        "datasets": [{"country": name, "data": by_country[name]} for name in ordered],
-    }
+        host = _referrer_host(v.referrer)
+        counts[host or "Direct"] += 1
+    rows = [{"host": h, "count": n} for h, n in counts.items()]
+    rows.sort(key=lambda r: r["count"], reverse=True)
+    return rows
 
 
 def _ts_hourly_buckets(timestamps: list[int], now: datetime, window_hours: int) -> list[dict]:
@@ -766,11 +737,9 @@ class StatsSnapshot(NamedTuple):
     daily_1y: list[dict]
     total_visits_1y: int
     unique_visitors_1y: int
-    countries: list[dict]
     browsers: list[dict]
     operating_systems: list[dict]
     devices: list[dict]
-    referrers: list[dict]
     #Conversion histograms (rows from the stats.db conversions table).
     conversions_total: int
     conversions_24h: int
@@ -816,14 +785,20 @@ class StatsSnapshot(NamedTuple):
     downloads_pv_hourly_7d:  dict
     downloads_pv_daily_30d:  dict
     downloads_pv_daily_1y:   dict
-    #Per-country visits over time: multi-line-chart-ready
-    #{labels, datasets[]} where each dataset is {country, data[]}.
-    #Top 8 countries by total in window each get their own line; the
-    #rest are folded into one "Other" line.
-    countries_hourly_24h: dict
-    countries_hourly_7d:  dict
-    countries_daily_30d:  dict
-    countries_daily_1y:   dict
+    #Per-country tables (one per range). Each is an ordered list
+    #of `{code, name, count}` rows sorted by count descending. The
+    #front-end emits the flag emoji from `code`. No size cap, the
+    #table is scrollable.
+    countries_table_24h: list[dict]
+    countries_table_7d:  list[dict]
+    countries_table_30d: list[dict]
+    countries_table_1y:  list[dict]
+    #Per-range external referrers as a `{host, count}` table sorted
+    #descending. "Direct" is the bucket for visits with no Referer.
+    referrers_table_24h: list[dict]
+    referrers_table_7d:  list[dict]
+    referrers_table_30d: list[dict]
+    referrers_table_1y:  list[dict]
     #Composite "growth of the app" daily index over the last 1 y,
     #weighted sum of unique visitors + conversions + downloads, with
     #a 7-day EMA + linear trend overlay. See _growth_index_daily().
@@ -878,16 +853,10 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
         browsers:  dict[str, int]  = defaultdict(int)
         oses:      dict[str, int]  = defaultdict(int)
         devices:   dict[str, int]  = defaultdict(int)
-        referrers: dict[str, int]  = defaultdict(int)
         for v in visits_30d:
             browsers[_ua_browser(v.ua)] += 1
             oses[_ua_os(v.ua)] += 1
             devices["Mobile" if _ua_is_mobile(v.ua) else "Desktop"] += 1
-            host = _referrer_host(v.referrer)
-            if host:
-                referrers[host] += 1
-            else:
-                referrers["Direct"] += 1
 
         #Geo: best-effort. Resolve up to 100 new IPs this call;
         #the rest stay "Unknown" until they get resolved on a
@@ -901,10 +870,6 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
         ips_1y = {v.ip for v in visits_1y}
         geo_1y = _geo.lookup_all(ips_1y)
         geo_1y.update(cached_geo)
-        country_counts: dict[str, int] = defaultdict(int)
-        for v in visits_30d:
-            cc, name = cached_geo.get(v.ip, (None, None))
-            country_counts[name or "Unknown"] += 1
 
         #Conversion histograms. Read from the stats.db conversions
         #table; cheap (single SELECT bounded by since_30d).
@@ -1057,11 +1022,9 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
             hourly_7d =_hourly_buckets(visits_7d,  now, 24 * 7),
             daily_30d =_daily_buckets(visits_30d, now, 30),
             daily_1y  =_daily_buckets(visits_1y,  now, 365),
-            countries=_top_n(country_counts, n=12),
             browsers =_top_n(browsers,        n=10),
             operating_systems=_top_n(oses,    n=10),
             devices  =_top_n(devices,         n=4),
-            referrers=_top_n(referrers,       n=10),
             conversions_total=conv_total,
             conversions_24h=conv_24h,
             conversions_7d =conv_7d,
@@ -1096,10 +1059,14 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
             downloads_pv_hourly_7d =dl_pv_7d,
             downloads_pv_daily_30d =dl_pv_30d,
             downloads_pv_daily_1y  =dl_pv_1y,
-            countries_hourly_24h=_per_country_buckets(visits_24h, cached_geo, now, window_hours=24),
-            countries_hourly_7d =_per_country_buckets(visits_7d,  cached_geo, now, window_hours=24 * 7),
-            countries_daily_30d =_per_country_buckets(visits_30d, cached_geo, now, window_days=30),
-            countries_daily_1y  =_per_country_buckets(visits_1y,  geo_1y,     now, window_days=365),
+            countries_table_24h=_country_table_rows(visits_24h, cached_geo),
+            countries_table_7d =_country_table_rows(visits_7d,  cached_geo),
+            countries_table_30d=_country_table_rows(visits_30d, cached_geo),
+            countries_table_1y =_country_table_rows(visits_1y,  geo_1y),
+            referrers_table_24h=_referrer_table_rows(visits_24h),
+            referrers_table_7d =_referrer_table_rows(visits_7d),
+            referrers_table_30d=_referrer_table_rows(visits_30d),
+            referrers_table_1y =_referrer_table_rows(visits_1y),
             growth_index_1y=_growth_index_daily(visits_1y, conv_ts_1y, dl_daily_1y, now, window_days=365),
         )
         _cache = snapshot
@@ -1121,11 +1088,9 @@ def snapshot_to_dict(snap: StatsSnapshot) -> dict:
         "hourly_7d":  snap.hourly_7d,
         "daily_30d":  snap.daily_30d,
         "daily_1y":   snap.daily_1y,
-        "countries":  snap.countries,
         "browsers":   snap.browsers,
         "operating_systems": snap.operating_systems,
         "devices":    snap.devices,
-        "referrers":  snap.referrers,
         "conversions_total": snap.conversions_total,
         "conversions_24h":   snap.conversions_24h,
         "conversions_7d":    snap.conversions_7d,
@@ -1160,9 +1125,13 @@ def snapshot_to_dict(snap: StatsSnapshot) -> dict:
         "downloads_pv_hourly_7d":  snap.downloads_pv_hourly_7d,
         "downloads_pv_daily_30d":  snap.downloads_pv_daily_30d,
         "downloads_pv_daily_1y":   snap.downloads_pv_daily_1y,
-        "countries_hourly_24h":    snap.countries_hourly_24h,
-        "countries_hourly_7d":     snap.countries_hourly_7d,
-        "countries_daily_30d":     snap.countries_daily_30d,
-        "countries_daily_1y":      snap.countries_daily_1y,
+        "countries_table_24h":     snap.countries_table_24h,
+        "countries_table_7d":      snap.countries_table_7d,
+        "countries_table_30d":     snap.countries_table_30d,
+        "countries_table_1y":      snap.countries_table_1y,
+        "referrers_table_24h":     snap.referrers_table_24h,
+        "referrers_table_7d":      snap.referrers_table_7d,
+        "referrers_table_30d":     snap.referrers_table_30d,
+        "referrers_table_1y":      snap.referrers_table_1y,
         "growth_index_1y":         snap.growth_index_1y,
     }

@@ -1868,6 +1868,89 @@ footer .sep
 {
     grid-column: 1 / -1;
 }
+/*  One-column variant used by the Browser / OS / Device row so
+    every doughnut card spans the full dashboard width, matching
+    the old wide treatment the referrers card used to have.      */
+.stats-grid--full
+{
+    grid-template-columns: 1fr;
+}
+
+/*  Country + referrers tables. Each ships a tab strip + a
+    scrollable table; height grows with the row count so a new
+    country simply adds a row, no canvas resize needed.          */
+.stats-table-wrap
+{
+    /*  Vertical cap so a year of 100+ countries doesn't push the
+        whole dashboard down by a screen, but never below 240 px
+        so short windows still feel substantial.                  */
+    max-height: 480px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+}
+.stats-table
+{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    color: var(--ink);
+}
+.stats-table thead th
+{
+    position: sticky;
+    top: 0;
+    background: var(--surface-2);
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+}
+.stats-table tbody td
+{
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border-soft);
+}
+.stats-table tbody tr:last-child td
+{
+    border-bottom: 0;
+}
+.stats-table tbody tr:hover td
+{
+    background: var(--surface-2);
+}
+.stats-table-num
+{
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.stats-table-flag-col
+{
+    width: 36px;
+}
+.stats-table .flag
+{
+    /*  Emoji rendering varies; bump the font-size so the flag
+        reads at a comfortable scale across platforms. Apple's
+        Color Emoji renders ISO regional-indicator pairs natively;
+        Linux fonts may fall back to text indicators (e.g. "FR"). */
+    font-size: 18px;
+    line-height: 1;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif;
+}
+.stats-table-empty
+{
+    text-align: center;
+    color: var(--ink-soft);
+    font-style: italic;
+    padding: 18px 0;
+}
 
 /*  Privacy page chrome: same card stack as the main page but the
     typography reads as a long-form policy document.              */

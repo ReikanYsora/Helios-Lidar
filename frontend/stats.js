@@ -324,13 +324,23 @@ const histograms = {
         '24h': 'server_hourly_24h', '7d': 'server_daily_7d',
         '30d': 'server_daily_30d',  '1y': 'server_daily_1y',
     }, accent: () => readCssVar('--accent', '#f5a623') },
-    countries:     { chart: null, range: '24h', src: {
-        '24h': 'countries_hourly_24h', '7d': 'countries_hourly_7d',
-        '30d': 'countries_daily_30d',  '1y': 'countries_daily_1y',
-    }, accent: () => readCssVar('--accent', '#f5a623') },
     growth:        { chart: null, range: '1y', src: {
         '1y': 'growth_index_1y',
     }, accent: () => readCssVar('--accent', '#f5a623') },
+};
+
+//Each table section: tab state + the snapshot keys per range.
+//Mirrors the histograms registry but the renderer paints HTML
+//<tr>s instead of a Chart.js canvas.
+const tables = {
+    countries: { range: '24h', src: {
+        '24h': 'countries_table_24h', '7d': 'countries_table_7d',
+        '30d': 'countries_table_30d', '1y': 'countries_table_1y',
+    }, body: 'table-countries-body', kind: 'country' },
+    referrers: { range: '24h', src: {
+        '24h': 'referrers_table_24h', '7d': 'referrers_table_7d',
+        '30d': 'referrers_table_30d', '1y': 'referrers_table_1y',
+    }, body: 'table-referrers-body', kind: 'referrer' },
 };
 let downloadsByVersionChart = null;
 let snapshot = null;
@@ -359,10 +369,6 @@ function applyHistogram(name)
     else if (name === 'downloads-pv')
     {
         h.chart = renderStackedPerVersion(`chart-downloads-pv`, data || {labels: [], datasets: []}, h.range);
-    }
-    else if (name === 'countries')
-    {
-        h.chart = renderCountryLines(`chart-histogram-${name}`, data || {labels: [], datasets: []}, h.range);
     }
     else if (name === 'growth')
     {
@@ -450,31 +456,60 @@ function renderGrowthKpis(payload)
     setKpi('growth-kpi-slope', 'Slope/d', payload.slope_per_day,  'num');
 }
 
-//Multi-line chart: one line per country, drawn in the SLICE_COLORS
-//palette so a country keeps roughly the same colour as it had in
-//the old doughnut. Bottom-anchored area fill (light alpha) so high
-//and low traffic countries stay legible side by side.
-function renderCountryLines(canvasId, payload, range)
+//ISO 3166-1 alpha-2 -> Unicode regional indicator pair, which
+//browsers render as the country flag emoji (Apple Color Emoji,
+//Segoe UI Emoji, Noto Color Emoji, etc.). Returns an empty
+//string when the code is missing or not a 2-letter A-Z pair.
+function flagEmoji(code)
 {
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) return null;
-    const labels   = (payload.labels   || []).map((l) => formatXLabel(l, range));
-    const rawLabels = (payload.labels  || []);
-    const datasets = (payload.datasets || []).map((ds, i) => ({
-        label: ds.country,
-        data:  ds.data,
-        borderColor:     SLICE_COLORS[i % SLICE_COLORS.length],
-        backgroundColor: SLICE_COLORS[i % SLICE_COLORS.length] + '33',
-        borderWidth: 2, tension: 0.25, pointRadius: 2, pointHoverRadius: 4,
-        fill: false,
-    }));
-    const opts = lineOptions();
-    opts.plugins.tooltip.callbacks.title = (items) => fullTooltipLabel(rawLabels[items[0].dataIndex] || items[0].label);
-    return new Chart(ctx, {
-        type: 'line',
-        data: { labels, datasets },
-        options: opts,
+    if (!code || code.length !== 2) return '';
+    const a = code.toUpperCase().charCodeAt(0);
+    const b = code.toUpperCase().charCodeAt(1);
+    if (a < 65 || a > 90 || b < 65 || b > 90) return '';
+    return String.fromCodePoint(0x1F1E6 + (a - 65), 0x1F1E6 + (b - 65));
+}
+
+function escapeHTML(s)
+{
+    return String(s).replace(/[&<>"']/g, (c) =>
+        ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+
+//Repaint a table body from the current snapshot + active range.
+//`name` is the key in the tables registry. Tab pills are updated
+//to reflect the active range so the markup stays accessible.
+function applyTable(name)
+{
+    if (!snapshot) return;
+    const t = tables[name];
+    if (!t) return;
+    const root = document.querySelector(`[data-table="${name}"]`);
+    if (!root) return;
+    root.querySelectorAll('.hist-tab').forEach((tab) =>
+    {
+        const isActive = tab.dataset.range === t.range;
+        tab.classList.toggle('is-active', isActive);
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
+    const body = document.getElementById(t.body);
+    if (!body) return;
+    const rows = snapshot[t.src[t.range]] || [];
+    if (!rows.length)
+    {
+        const cols = (t.kind === 'country') ? 3 : 2;
+        body.innerHTML = `<tr><td colspan="${cols}" class="stats-table-empty">No data in this window yet.</td></tr>`;
+        return;
+    }
+    body.innerHTML = rows.map((r) =>
+    {
+        const count = KPI_FMT(r.count);
+        if (t.kind === 'country')
+        {
+            const flag = escapeHTML(flagEmoji(r.code));
+            return `<tr><td class="flag">${flag}</td><td>${escapeHTML(r.name || 'Unknown')}</td><td class="stats-table-num">${count}</td></tr>`;
+        }
+        return `<tr><td>${escapeHTML(r.host || 'Direct')}</td><td class="stats-table-num">${count}</td></tr>`;
+    }).join('');
 }
 
 //Stacked bar chart for per-version downloads over time. Each
@@ -594,16 +629,12 @@ async function loadStats()
         el.textContent = KPI_FMT(snapshot[key]);
     });
 
-    renderDoughnut('chart-countries', snapshot.countries);
     renderDoughnut('chart-browsers',  snapshot.browsers);
     renderDoughnut('chart-os',        snapshot.operating_systems);
     renderDoughnut('chart-devices',   snapshot.devices);
-    if (Array.isArray(snapshot.referrers))
-    {
-        renderDoughnut('chart-referrers', snapshot.referrers);
-    }
 
     Object.keys(histograms).forEach(applyHistogram);
+    Object.keys(tables).forEach(applyTable);
     renderDownloadsPerVersion();
 
     const refreshEl = document.getElementById('stats-fetched-at');
@@ -618,15 +649,30 @@ async function loadStats()
 document.querySelectorAll('.stats-histogram').forEach((section) =>
 {
     const name = section.getAttribute('data-hist');
-    if (!histograms[name]) return;
-    section.querySelectorAll('.hist-tab').forEach((tab) =>
+    if (histograms[name])
     {
-        tab.addEventListener('click', () =>
+        section.querySelectorAll('.hist-tab').forEach((tab) =>
         {
-            histograms[name].range = tab.dataset.range;
-            applyHistogram(name);
+            tab.addEventListener('click', () =>
+            {
+                histograms[name].range = tab.dataset.range;
+                applyHistogram(name);
+            });
         });
-    });
+        return;
+    }
+    const tableName = section.getAttribute('data-table');
+    if (tables[tableName])
+    {
+        section.querySelectorAll('.hist-tab').forEach((tab) =>
+        {
+            tab.addEventListener('click', () =>
+            {
+                tables[tableName].range = tab.dataset.range;
+                applyTable(tableName);
+            });
+        });
+    }
 });
 
 new MutationObserver(() =>
