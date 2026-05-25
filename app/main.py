@@ -201,8 +201,14 @@ def _check_stats_auth(creds: HTTPBasicCredentials | None = Depends(_stats_auth))
 
 @app.get("/privacy")
 def privacy_page() -> FileResponse:
-    """Static privacy policy. Linked from the footer."""
-    return FileResponse(FRONTEND_DIR / "privacy.html", media_type="text/html; charset=utf-8")
+    """Static privacy policy. Linked from the footer. Served with
+    a no-cache hint so style/markup tweaks ship to visitors on
+    their next reload without an explicit hard-refresh."""
+    return FileResponse(
+        FRONTEND_DIR / "privacy.html",
+        media_type="text/html; charset=utf-8",
+        headers={"cache-control": "no-cache, must-revalidate"},
+    )
 
 
 @app.get("/stats", dependencies=[Depends(_check_stats_auth)])
@@ -213,7 +219,11 @@ def stats_page() -> FileResponse:
     charts via Chart.js.
     """
     page = FRONTEND_DIR / "stats.html"
-    return FileResponse(page, media_type="text/html; charset=utf-8")
+    return FileResponse(
+        page,
+        media_type="text/html; charset=utf-8",
+        headers={"cache-control": "no-cache, must-revalidate"},
+    )
 
 
 @app.get("/api/stats", dependencies=[Depends(_check_stats_auth)])
