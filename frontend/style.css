@@ -123,20 +123,20 @@ main
     height + body drops its 100vh minimum so the footer-glow
     sits flush under the last content row, no leftover viewport
     space to distribute as a visible gap.                       */
+/*  Block layout (not flex) on page-short bodies. The default flex
+    column on body causes mysterious whitespace between main and
+    the page footer on short pages, no matter how aggressively
+    we tried to neutralise the flex behaviour. Block layout just
+    stacks children top-to-bottom with no extra space.            */
 html.page-short,
 html.page-short body
 {
     min-height: 0 !important;
+    display: block !important;
 }
 html.page-short main
 {
     flex: none !important;
-}
-html.page-short main > .stats-main,
-html.page-short main > .privacy-main
-{
-    flex: none;
-    min-height: 0;
 }
 html.page-short[data-page="stats"] main,
 html.page-short main:has(.stats-main)
