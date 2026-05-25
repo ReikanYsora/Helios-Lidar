@@ -1509,12 +1509,35 @@ footer.footer-glow::before
 {
     position: relative;
     z-index: 1;
+    /*  Wrap-friendly cluster: links flow as a centred row that
+        breaks onto multiple lines on narrow viewports without the
+        em-dash separators sticking out at line edges.            */
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 4px 14px;
 }
 
 footer .sep
 {
     margin: 0 10px;
     color: var(--border);
+}
+
+/*  On phones, the em-dash separators land awkwardly when links
+    wrap onto multiple lines; hide them and let the flex gap above
+    space the items naturally.                                    */
+@media (max-width: 540px)
+{
+    footer .sep
+    {
+        display: none;
+    }
+    .footer-inner
+    {
+        gap: 8px 16px;
+    }
 }
 
 /*  ============================================================
