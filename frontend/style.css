@@ -120,8 +120,13 @@ main
 /*  /stats and /privacy carry .page-short on <html> so we can
     target them without depending on :has() (Firefox + older
     browsers still flake on it). main collapses to its content
-    height so the gap between the inner footer (Back link / last-
-    refresh stamp) and the page-wide footer-glow disappears.    */
+    height + body drops its 100vh minimum so the footer-glow
+    sits flush under the last content row, no leftover viewport
+    space to distribute as a visible gap.                       */
+html.page-short body
+{
+    min-height: 0;
+}
 html.page-short main
 {
     flex: 0 0 auto;
