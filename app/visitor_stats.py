@@ -226,6 +226,42 @@ def parse_rows(since: datetime, max_rows: int = 2_000_000) -> list[LogRow]:
     return rows
 
 
+def parse_post_jobs_entries(since: datetime, max_rows: int = 200_000) -> list[tuple[int, str]]:
+    """Scan the nginx access logs and return `(unix_ts, ip)` for
+    every POST /jobs request at or after `since`, oldest first.
+
+    Used by the retroactive backfill of `conversions.client_ip`:
+    a conversion's completion timestamp is correlated against the
+    nearest POST /jobs entry preceding it to recover the originating
+    IP for legacy rows that pre-date the column being added.
+    """
+    out: list[tuple[int, str]] = []
+    for path in _iter_log_files(since):
+        try:
+            with _open_log(path) as fh:
+                for line in fh:
+                    m = _LOG_RE.match(line)
+                    if not m:
+                        continue
+                    if (m["method"] or "") != "POST":
+                        continue
+                    p = m["path"] or ""
+                    if not (p == "/jobs" or p.startswith("/jobs?")):
+                        continue
+                    try:
+                        ts = datetime.strptime(m["ts"], _TS_FMT).astimezone(timezone.utc)
+                    except ValueError:
+                        continue
+                    if ts < since:
+                        continue
+                    out.append((int(ts.timestamp()), m["ip"]))
+                    if len(out) >= max_rows:
+                        return out
+        except OSError as exc:
+            log.warning("nginx log %s unreadable: %s", path, exc)
+    return out
+
+
 def _filter_human_visits(rows: Iterable[LogRow]) -> list[LogRow]:
     """Keep only one row per (ip, hour) for GET / hits with 2xx/3xx,
     bots filtered out. That collapses page reloads + asset fetches
@@ -490,6 +526,26 @@ def _growth_index_daily(visits_1y: list,
         "growth_pct_mom": _growth_pct(30),
         "weights":        {"visitor": W_VISIT, "conversion": W_CONV, "download": W_DL},
     }
+
+
+def _conversion_country_rows(conv_rows: list[tuple[int, str | None]],
+                             geo: dict) -> list[dict]:
+    """Aggregate `(completed_at, client_ip)` conversion records into
+    a `{code, name, count}` table sorted descending. IPs not in the
+    geo cache (private, unresolved, or pre-backfill) fall into the
+    "Unknown" bucket so we still see how many uncategorised
+    conversions are in the window."""
+    counts: dict[tuple[str | None, str], int] = defaultdict(int)
+    for _ts, ip in conv_rows:
+        if ip:
+            cc, name = geo.get(ip, (None, None))
+        else:
+            cc, name = (None, None)
+        counts[(cc, name or "Unknown")] += 1
+    rows = [{"code": cc, "name": name, "count": n}
+            for (cc, name), n in counts.items()]
+    rows.sort(key=lambda r: r["count"], reverse=True)
+    return rows
 
 
 def _country_table_rows(visits: list, geo: dict) -> list[dict]:
@@ -799,6 +855,14 @@ class StatsSnapshot(NamedTuple):
     referrers_table_7d:  list[dict]
     referrers_table_30d: list[dict]
     referrers_table_1y:  list[dict]
+    #Per-range conversions by originating country. Source IP is the
+    #x-forwarded-for of the POST /jobs request, captured at job
+    #creation. Pre-backfill rows surface as "Unknown" until the
+    #nginx-log correlation catches them.
+    conversions_country_24h: list[dict]
+    conversions_country_7d:  list[dict]
+    conversions_country_30d: list[dict]
+    conversions_country_1y:  list[dict]
     #Composite "growth of the app" daily index over the last 1 y,
     #weighted sum of unique visitors + conversions + downloads, with
     #a 7-day EMA + linear trend overlay. See _growth_index_daily().
@@ -878,10 +942,12 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
         conv_hourly_24h: list[dict] = _ts_hourly_buckets([], now, 24)
         conv_hourly_7d:  list[dict] = _ts_hourly_buckets([], now, 24 * 7)
         conv_daily_30d:  list[dict] = _ts_daily_buckets([],  now, 30)
+        conv_rows_1y: list[tuple[int, str | None]] = []
         if stats_store is not None:
             try:
                 conv_total = stats_store.total_conversions()
-                conv_ts_30d = stats_store.conversion_timestamps(int(since_30d.timestamp()))
+                conv_rows_1y = stats_store.conversion_rows_since(int(since_1y.timestamp()))
+                conv_ts_30d = [ts for ts, _ in conv_rows_1y if ts >= int(since_30d.timestamp())]
                 conv_24h = sum(1 for t in conv_ts_30d if t >= int(since_24h.timestamp()))
                 conv_7d  = sum(1 for t in conv_ts_30d if t >= int(since_7d.timestamp()))
                 conv_30d = len(conv_ts_30d)
@@ -890,6 +956,25 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
                 conv_daily_30d  = _ts_daily_buckets(conv_ts_30d, now, 30)
             except Exception:
                 log.exception("conversion histogram build failed")
+
+        #Resolve any conversion IPs we don't have in cache yet; the
+        #count is small (one POST /jobs per conversion) so we can
+        #afford to push them through the ip-api batch in this call.
+        conv_ips_unresolved = {ip for _ts, ip in conv_rows_1y
+                               if ip and ip not in geo_1y}
+        if conv_ips_unresolved:
+            extra_geo = _geo.lookup_all(conv_ips_unresolved)
+            still_missing = conv_ips_unresolved - set(extra_geo)
+            if still_missing:
+                extra_geo.update(_geo.resolve_missing(still_missing))
+            geo_1y.update(extra_geo)
+
+        def _conv_window(ts_min: int) -> list[tuple[int, str | None]]:
+            return [r for r in conv_rows_1y if r[0] >= ts_min]
+        conv_country_24h = _conversion_country_rows(_conv_window(int(since_24h.timestamp())), geo_1y)
+        conv_country_7d  = _conversion_country_rows(_conv_window(int(since_7d.timestamp())),  geo_1y)
+        conv_country_30d = _conversion_country_rows(_conv_window(int(since_30d.timestamp())), geo_1y)
+        conv_country_1y  = _conversion_country_rows(conv_rows_1y, geo_1y)
 
         #Download snapshots: refresh GitHub now (which records a new
         #row in download_snapshots via the on_fresh callback), then
@@ -1067,6 +1152,10 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
             referrers_table_7d =_referrer_table_rows(visits_7d),
             referrers_table_30d=_referrer_table_rows(visits_30d),
             referrers_table_1y =_referrer_table_rows(visits_1y),
+            conversions_country_24h=conv_country_24h,
+            conversions_country_7d =conv_country_7d,
+            conversions_country_30d=conv_country_30d,
+            conversions_country_1y =conv_country_1y,
             growth_index_1y=_growth_index_daily(visits_1y, conv_ts_1y, dl_daily_1y, now, window_days=365),
         )
         _cache = snapshot
@@ -1133,5 +1222,9 @@ def snapshot_to_dict(snap: StatsSnapshot) -> dict:
         "referrers_table_7d":      snap.referrers_table_7d,
         "referrers_table_30d":     snap.referrers_table_30d,
         "referrers_table_1y":      snap.referrers_table_1y,
+        "conversions_country_24h": snap.conversions_country_24h,
+        "conversions_country_7d":  snap.conversions_country_7d,
+        "conversions_country_30d": snap.conversions_country_30d,
+        "conversions_country_1y":  snap.conversions_country_1y,
         "growth_index_1y":         snap.growth_index_1y,
     }

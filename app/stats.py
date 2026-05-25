@@ -64,23 +64,132 @@ class StatsStore:
                         ON download_per_tag_snapshots (ts);
                     """
                 )
+                #Idempotent column add: client_ip on conversions
+                #for the per-country breakdown. Older rows stay NULL
+                #until the nginx-log backfill assigns one.
+                try:
+                    conn.execute("ALTER TABLE conversions ADD COLUMN client_ip TEXT")
+                except sqlite3.OperationalError:
+                    pass  #column already exists
 
-    def record_conversion(self) -> bool:
+    def record_conversion(self, client_ip: str | None = None) -> bool:
         """Append one row to the conversions table. Called from
-        app.main._process() right after a job hits DONE.
+        app.main._process() right after a job hits DONE. `client_ip`
+        is the address that POSTed the job, captured upstream from
+        the FastAPI Request, so we can resolve the country later
+        for the dashboard.
         """
         now = int(time.time())
         try:
             with self._lock:
                 with sqlite3.connect(self.db_path) as conn:
                     conn.execute(
-                        "INSERT INTO conversions (completed_at) VALUES (?)",
-                        (now,),
+                        "INSERT INTO conversions (completed_at, client_ip) VALUES (?, ?)",
+                        (now, client_ip),
                     )
             return True
         except sqlite3.Error as exc:
             log.warning("stats.record_conversion failed: %s", exc)
             return False
+
+    def conversion_rows_since(self, since_unix: int) -> list[tuple[int, str | None]]:
+        """Return `(completed_at, client_ip)` for every conversion at
+        or after `since_unix`, ascending. The dashboard uses this to
+        resolve country breakdowns; rows with NULL ip stay grouped
+        under "Unknown" until the backfill catches them."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cur = conn.execute(
+                    "SELECT completed_at, client_ip FROM conversions "
+                    "WHERE completed_at >= ? ORDER BY completed_at",
+                    (since_unix,),
+                )
+                return [(int(ts), ip if ip else None) for ts, ip in cur.fetchall()]
+        except sqlite3.Error as exc:
+            log.warning("stats.conversion_rows_since failed: %s", exc)
+            return []
+
+    def conversions_missing_ip(self) -> list[tuple[int, int]]:
+        """`(id, completed_at)` for every conversion row whose
+        client_ip is NULL, ascending, used by the nginx-log backfill
+        to pair completion timestamps with the request IPs."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cur = conn.execute(
+                    "SELECT id, completed_at FROM conversions "
+                    "WHERE client_ip IS NULL ORDER BY completed_at"
+                )
+                return [(int(i), int(t)) for i, t in cur.fetchall()]
+        except sqlite3.Error as exc:
+            log.warning("stats.conversions_missing_ip failed: %s", exc)
+            return []
+
+    def set_conversion_ip(self, conversion_id: int, client_ip: str) -> bool:
+        try:
+            with self._lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute(
+                        "UPDATE conversions SET client_ip = ? WHERE id = ? AND client_ip IS NULL",
+                        (client_ip, conversion_id),
+                    )
+            return True
+        except sqlite3.Error as exc:
+            log.warning("stats.set_conversion_ip failed: %s", exc)
+            return False
+
+    def backfill_conversion_ips(self, post_entries: list[tuple[int, str]],
+                                lookback_seconds: int = 20 * 60) -> int:
+        """Walk every conversion with NULL `client_ip` and assign the
+        most recent POST /jobs IP from `post_entries` that landed at
+        most `lookback_seconds` before the conversion's completed_at.
+
+        `post_entries` is a chronologically-ordered list of
+        `(unix_ts, ip)` tuples (see visitor_stats.parse_post_jobs_entries).
+        Returns the number of rows updated.
+
+        Heuristic: the upload POST is always strictly before the
+        completion time (the job runs synchronously then writes the
+        DONE row). Typical end-to-end is well under 5 min for the
+        rasters / under 15 min for a heavy LAZ; 20 min is the
+        permissive cap so we don't miss anything reasonable. If two
+        uploads land inside the same window, we take the latest one,
+        which is the most likely match in practice for a single
+        user. Multi-user collisions inside a 20 min window are rare
+        on this site's traffic.
+        """
+        missing = self.conversions_missing_ip()
+        if not missing or not post_entries:
+            return 0
+        #Two-pointer sweep, both sorted ascending by ts.
+        updates: list[tuple[int, str]] = []
+        i = 0
+        for cid, ts in missing:
+            window_start = ts - lookback_seconds
+            #Advance i to the first entry that's >= window_start.
+            while i < len(post_entries) and post_entries[i][0] < window_start:
+                i += 1
+            #Look for the latest entry <= ts (but >= window_start).
+            j = i
+            best: str | None = None
+            while j < len(post_entries) and post_entries[j][0] <= ts:
+                best = post_entries[j][1]
+                j += 1
+            if best:
+                updates.append((cid, best))
+        if not updates:
+            return 0
+        try:
+            with self._lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.executemany(
+                        "UPDATE conversions SET client_ip = ? "
+                        "WHERE id = ? AND client_ip IS NULL",
+                        [(ip, cid) for cid, ip in updates],
+                    )
+            return len(updates)
+        except sqlite3.Error as exc:
+            log.warning("stats.backfill_conversion_ips failed: %s", exc)
+            return 0
 
     def total_conversions(self) -> int:
         """All-time successful conversion count."""

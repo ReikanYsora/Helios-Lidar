@@ -96,6 +96,32 @@ _server_sampler = server_stats.ServerSampler(settings.jobs_dir.parent / "stats" 
 _server_sampler.start()
 
 
+def _backfill_conversion_ips_once() -> None:
+    """Best-effort: for every conversion row that pre-dates the
+    client_ip column, scan the last year of nginx logs for POST
+    /jobs entries and pair each completion timestamp with the
+    most recent POST /jobs request from the same IP that landed
+    within 20 minutes before it. Runs once in a daemon thread
+    at startup so we don't block boot on log parsing."""
+    def _run():
+        try:
+            missing = _stats.conversions_missing_ip()
+            if not missing:
+                return
+            from datetime import datetime, timedelta, timezone
+            since = datetime.now(timezone.utc) - timedelta(days=365)
+            posts = visitor_stats.parse_post_jobs_entries(since)
+            n = _stats.backfill_conversion_ips(posts)
+            log.info("conversions backfill: paired %d / %d missing IPs",
+                     n, len(missing))
+        except Exception:
+            log.exception("conversion IP backfill failed")
+    threading.Thread(target=_run, name="conv-backfill", daemon=True).start()
+
+
+_backfill_conversion_ips_once()
+
+
 @app.get("/api/conversions-count")
 def conversions_count() -> JSONResponse:
     """All-time count of successful pipeline conversions (jobs that
@@ -276,6 +302,7 @@ def api_lidar_sources() -> JSONResponse:
 
 @app.post("/jobs")
 async def create_job(
+    request: Request,
     background: BackgroundTasks,
     dsm: UploadFile | None = File(None, description="Digital Surface Model GeoTIFF (paired with `dtm`)"),
     dtm: UploadFile | None = File(None, description="Digital Terrain Model GeoTIFF (paired with `dsm`)"),
@@ -325,7 +352,12 @@ async def create_job(
         job.save()
         raise
 
-    background.add_task(_process, job.job_id)
+    #Capture the real client IP for the per-country breakdown of
+    #conversions. Trust the X-Forwarded-For from nginx (we're behind
+    #the OVH vhost), fall back to the direct peer address.
+    fwd = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    client_ip = fwd or (request.client.host if request.client else None)
+    background.add_task(_process, job.job_id, client_ip)
 
     return JSONResponse(
         {
@@ -358,7 +390,7 @@ async def _stream_upload(upload: UploadFile, target: Path) -> None:
         await upload.close()
 
 
-def _process(job_id: str) -> None:
+def _process(job_id: str, client_ip: str | None = None) -> None:
     """Background task: dispatch to the raster or LAZ pipeline,
     then COG-ify and publish.
 
@@ -495,7 +527,7 @@ def _process(job_id: str) -> None:
         #Bump the public conversions counter. Best-effort, a
         #stats hiccup never blocks a finished job.
         try:
-            _stats.record_conversion()
+            _stats.record_conversion(client_ip=client_ip)
         except Exception as exc:
             log.warning("stats.record_conversion failed: %s", exc)
 

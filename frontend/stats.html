@@ -147,6 +147,37 @@
       </div>
     </section>
 
+    <!--  LiDAR conversions per country: lets the maintainer see
+          which countries are using the pipeline so the next LiDAR
+          providers (in LIDAR_SOURCES.md / the Helios card) can be
+          prioritised against real demand. The originating IP is
+          captured on POST /jobs going forward; legacy rows are
+          backfilled at startup by correlating completion times
+          against nginx-log POST /jobs entries.                   -->
+    <section class="card stats-histogram" data-table="conversions-country">
+      <header class="histogram-header">
+        <h2>LiDAR conversions per country</h2>
+        <div class="histogram-tabs" role="tablist" aria-label="Time range">
+          <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
+          <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
+          <button type="button" class="hist-tab"           data-range="30d" role="tab" aria-selected="false">30 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
+        </div>
+      </header>
+      <div class="stats-table-wrap">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th class="stats-table-flag-col" scope="col"></th>
+              <th scope="col">Country</th>
+              <th class="stats-table-num" scope="col">Conversions</th>
+            </tr>
+          </thead>
+          <tbody id="table-conversions-country-body"></tbody>
+        </table>
+      </div>
+    </section>
+
     <!--  Visits per country: scrollable table, flag + name + count,
           one row per country seen in the window, no truncation.   -->
     <section class="card stats-histogram" data-table="countries">

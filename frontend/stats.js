@@ -341,6 +341,10 @@ const tables = {
         '24h': 'referrers_table_24h', '7d': 'referrers_table_7d',
         '30d': 'referrers_table_30d', '1y': 'referrers_table_1y',
     }, body: 'table-referrers-body', kind: 'referrer' },
+    'conversions-country': { range: '24h', src: {
+        '24h': 'conversions_country_24h', '7d': 'conversions_country_7d',
+        '30d': 'conversions_country_30d', '1y': 'conversions_country_1y',
+    }, body: 'table-conversions-country-body', kind: 'country' },
 };
 let downloadsByVersionChart = null;
 let snapshot = null;
