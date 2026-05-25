@@ -117,6 +117,24 @@ main
     padding: 0 24px 24px;
 }
 
+/*  /stats and /privacy don't need main to grow to fill the
+    viewport: their content is short enough that the flex: 1
+    creates a visible gap between the inner footer (Back link /
+    last-refresh stamp) and the page-wide footer-glow. Letting
+    main collapse to its content height drops the gap.           */
+main:has(.stats-main),
+main:has(.privacy-main)
+{
+    flex: 0 0 auto;
+}
+/*  The dashboard benefits from a wider canvas than the upload
+    page's 860 px column; let it use up to 1100 px (matches the
+    stats-main max-width). Privacy stays narrow for readability.  */
+main:has(.stats-main)
+{
+    max-width: 1100px;
+}
+
 header
 {
     margin-bottom: 32px;
