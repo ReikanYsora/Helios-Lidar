@@ -142,6 +142,10 @@ html.page-short main
     flex: 1;
     display: flex;
     flex-direction: column;
+    /*  Kill the bottom padding inherited from the default main
+        rule: that 24px was adding to the .stats-main bottom
+        padding to produce a visible gap before the footer-glow. */
+    padding-bottom: 0 !important;
 }
 html.page-short main > header
 {
@@ -155,11 +159,16 @@ html.page-short main > .privacy-main
     flex-direction: column;
     max-width: 1100px;
     margin: 0 auto;
+    padding-bottom: 0 !important;
 }
 html.page-short .stats-footer,
 html.page-short .privacy-footer
 {
     margin-top: auto;
+    /*  Internal breathing room: this is the ONLY remaining space
+        between the inner footer's text and the page-wide
+        footer-glow above it, so the gap stays small + intentional. */
+    padding: 18px 0 16px;
 }
 html.page-short[data-page="stats"] main,
 html.page-short main:has(.stats-main)
