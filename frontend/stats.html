@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Helios Analytics</title>
   <link rel="icon" type="image/png" href="/static/helios-icon.png">
-  <link rel="stylesheet" href="/static/style.css?v=20260525f">
+  <link rel="stylesheet" href="/static/style.css?v=20260525g">
 </head>
 <body>
   <div class="bg-blur bg-blur--left"  aria-hidden="true"></div>
@@ -128,13 +128,22 @@
       </div>
     </section>
 
-    <section class="stats-grid">
-      <div class="card chart-card">
-        <h3>Country</h3>
-        <div class="chart-wrap">
-          <canvas id="chart-countries"></canvas>
+    <section class="card stats-histogram" data-hist="countries">
+      <header class="histogram-header">
+        <h2>Visits per country, over time</h2>
+        <div class="histogram-tabs" role="tablist" aria-label="Time range">
+          <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
+          <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
+          <button type="button" class="hist-tab"           data-range="30d" role="tab" aria-selected="false">30 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
         </div>
+      </header>
+      <div class="chart-wrap chart-wrap--wide">
+        <canvas id="chart-histogram-countries"></canvas>
       </div>
+    </section>
+
+    <section class="stats-grid">
       <div class="card chart-card">
         <h3>Browser</h3>
         <div class="chart-wrap">

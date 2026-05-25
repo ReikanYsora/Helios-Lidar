@@ -7,6 +7,24 @@
 //Same CSS variables drive the chart colours so a dark <-> light
 //switch from the main page persists to this dashboard too.
 
+//Visible error chip when the /api/stats fetch fails (most often
+//on mobile when the saved Basic credentials don't auto-fill, so
+//the API returns 401 and the dashboard would otherwise render
+//empty without a clue).
+function showFetchError(detail)
+{
+    let el = document.getElementById('stats-fetch-error');
+    if (!el)
+    {
+        el = document.createElement('div');
+        el.id = 'stats-fetch-error';
+        el.style.cssText = 'margin:12px 0;padding:10px 14px;border-radius:6px;background:#ef4444;color:#fff;font-size:13px;text-align:center;';
+        const host = document.querySelector('.stats-main') || document.body;
+        host.insertBefore(el, host.firstChild);
+    }
+    el.textContent = `Could not load /api/stats (${detail}). Try reloading the page; on mobile you may need to re-enter the password.`;
+}
+
 const KPI_FMT = (n) =>
 {
     if (!Number.isFinite(n)) return ',';
@@ -203,15 +221,30 @@ function renderServerLines(canvasId, payload, range)
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
     const labels = (payload.load_1m || []).map((p) => formatXLabel(p.label, range));
+    const rawLabels = (payload.load_1m || []).map((p) => p.label);
+    const inkSoft = readCssVar('--ink-soft', '#9ba0a6');
     const opts = lineOptions();
-    opts.scales.y.title = { display: true, text: 'Load (1 min)', color: readCssVar('--ink-soft', '#9ba0a6'), font: { size: 10 } };
+    opts.scales.y.title = { display: true, text: 'Load (1 min)', color: inkSoft, font: { size: 10 } };
     opts.scales.y1 = {
         position: 'right',
-        ticks: { color: readCssVar('--ink-soft', '#9ba0a6'), font: { size: 10 } },
+        ticks: { color: inkSoft, font: { size: 10 } },
         grid:  { drawOnChartArea: false },
         beginAtZero: true, max: 100,
-        title: { display: true, text: '% used', color: readCssVar('--ink-soft', '#9ba0a6'), font: { size: 10 } },
+        title: { display: true, text: '% used', color: inkSoft, font: { size: 10 } },
     };
+    /*  Third axis (also on the right, offset out so it doesn't
+        overlap y1) for network throughput in Mbps. Lets us read
+        "is the box maxing out its OVH bandwidth cap?" against the
+        same time axis as RAM / disk / load.                       */
+    opts.scales.y2 = {
+        position: 'right',
+        ticks: { color: inkSoft, font: { size: 10 } },
+        grid:  { drawOnChartArea: false },
+        beginAtZero: true,
+        offset: true,
+        title: { display: true, text: 'Net Mbps', color: inkSoft, font: { size: 10 } },
+    };
+    opts.plugins.tooltip.callbacks.title = (items) => fullTooltipLabel(rawLabels[items[0].dataIndex] || items[0].label);
     return new Chart(ctx, {
         type: 'line',
         data: {
@@ -237,6 +270,20 @@ function renderServerLines(canvasId, payload, range)
                     borderColor: '#22c55e', backgroundColor: 'transparent',
                     yAxisID: 'y1',
                     tension: 0.25, pointRadius: 2.5, pointHoverRadius: 4, borderWidth: 2, borderDash: [4, 4],
+                },
+                {
+                    label: 'Net RX (Mbps)',
+                    data: (payload.net_rx_mbps || []).map((p) => p.value),
+                    borderColor: '#a855f7', backgroundColor: 'transparent',
+                    yAxisID: 'y2',
+                    tension: 0.25, pointRadius: 2, pointHoverRadius: 4, borderWidth: 2,
+                },
+                {
+                    label: 'Net TX (Mbps)',
+                    data: (payload.net_tx_mbps || []).map((p) => p.value),
+                    borderColor: '#ec4899', backgroundColor: 'transparent',
+                    yAxisID: 'y2',
+                    tension: 0.25, pointRadius: 2, pointHoverRadius: 4, borderWidth: 2, borderDash: [4, 4],
                 },
             ],
         },
@@ -277,6 +324,10 @@ const histograms = {
         '24h': 'server_hourly_24h', '7d': 'server_daily_7d',
         '30d': 'server_daily_30d',  '1y': 'server_daily_1y',
     }, accent: () => readCssVar('--accent', '#f5a623') },
+    countries:     { chart: null, range: '24h', src: {
+        '24h': 'countries_hourly_24h', '7d': 'countries_hourly_7d',
+        '30d': 'countries_daily_30d',  '1y': 'countries_daily_1y',
+    }, accent: () => readCssVar('--accent', '#f5a623') },
 };
 let downloadsByVersionChart = null;
 let snapshot = null;
@@ -306,11 +357,42 @@ function applyHistogram(name)
     {
         h.chart = renderStackedPerVersion(`chart-downloads-pv`, data || {labels: [], datasets: []}, h.range);
     }
+    else if (name === 'countries')
+    {
+        h.chart = renderCountryLines(`chart-histogram-${name}`, data || {labels: [], datasets: []}, h.range);
+    }
     else
     {
         const series = Array.isArray(data) ? data : [];
         h.chart = renderBars(`chart-histogram-${name}`, series, h.range, h.accent());
     }
+}
+
+//Multi-line chart: one line per country, drawn in the SLICE_COLORS
+//palette so a country keeps roughly the same colour as it had in
+//the old doughnut. Bottom-anchored area fill (light alpha) so high
+//and low traffic countries stay legible side by side.
+function renderCountryLines(canvasId, payload, range)
+{
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return null;
+    const labels   = (payload.labels   || []).map((l) => formatXLabel(l, range));
+    const rawLabels = (payload.labels  || []);
+    const datasets = (payload.datasets || []).map((ds, i) => ({
+        label: ds.country,
+        data:  ds.data,
+        borderColor:     SLICE_COLORS[i % SLICE_COLORS.length],
+        backgroundColor: SLICE_COLORS[i % SLICE_COLORS.length] + '33',
+        borderWidth: 2, tension: 0.25, pointRadius: 2, pointHoverRadius: 4,
+        fill: false,
+    }));
+    const opts = lineOptions();
+    opts.plugins.tooltip.callbacks.title = (items) => fullTooltipLabel(rawLabels[items[0].dataIndex] || items[0].label);
+    return new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: opts,
+    });
 }
 
 //Stacked bar chart for per-version downloads over time. Each
@@ -383,7 +465,7 @@ async function renderDownloadsPerVersion()
     let data;
     try
     {
-        const resp = await fetch('/api/helios-downloads', { credentials: 'omit' });
+        const resp = await fetch('/api/helios-downloads', { credentials: 'same-origin' });
         if (!resp.ok) return;
         data = await resp.json();
     }
@@ -413,11 +495,16 @@ async function loadStats()
 {
     try
     {
-        const resp = await fetch('/api/stats', { credentials: 'omit' });
-        if (!resp.ok) { console.warn('stats endpoint returned', resp.status); return; }
+        /*  credentials: 'same-origin' so the browser includes the
+            HTTP Basic Authorization header it cached when the user
+            unlocked /stats. Safari iOS strips the header entirely
+            under credentials: 'omit', which made the page render
+            but every dataset come back empty on mobile.            */
+        const resp = await fetch('/api/stats', { credentials: 'same-origin' });
+        if (!resp.ok) { showFetchError(resp.status); return; }
         snapshot = await resp.json();
     }
-    catch (err) { console.warn('stats fetch failed', err); return; }
+    catch (err) { showFetchError(err && err.message || err); return; }
 
     document.querySelectorAll('[data-kpi]').forEach((el) =>
     {
@@ -425,7 +512,6 @@ async function loadStats()
         el.textContent = KPI_FMT(snapshot[key]);
     });
 
-    renderDoughnut('chart-countries', snapshot.countries);
     renderDoughnut('chart-browsers',  snapshot.browsers);
     renderDoughnut('chart-os',        snapshot.operating_systems);
     renderDoughnut('chart-devices',   snapshot.devices);

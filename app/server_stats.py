@@ -66,6 +66,31 @@ def _load_1m() -> float | None:
         return None
 
 
+def _read_net_bytes() -> tuple[int, int] | None:
+    """Sum rx + tx bytes across all non-loopback interfaces from
+    /proc/net/dev. Returns (rx_total, tx_total) or None if the file
+    can't be read (non-Linux dev box, etc.)."""
+    try:
+        rx_total = 0
+        tx_total = 0
+        with open("/proc/net/dev", "r", encoding="utf-8") as fh:
+            for line in fh:
+                if ":" not in line:
+                    continue
+                iface, rest = line.split(":", 1)
+                iface = iface.strip()
+                if iface == "lo":
+                    continue
+                cols = rest.split()
+                if len(cols) < 9:
+                    continue
+                rx_total += int(cols[0])
+                tx_total += int(cols[8])
+        return (rx_total, tx_total)
+    except (OSError, ValueError):
+        return None
+
+
 class ServerSampler:
     """Owns its own SQLite connection per write + a tiny daemon
     thread that wakes up every minute to record one sample. Safe
@@ -86,20 +111,52 @@ class ServerSampler:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
             conn.executescript(self.SCHEMA)
+            #Idempotent column adds for the network-bandwidth columns
+            #(net_rx_mbps + net_tx_mbps). Older rows stay NULL, which
+            #the chart layer treats as "no data for this bucket".
+            for col in ("net_rx_mbps REAL", "net_tx_mbps REAL"):
+                try:
+                    conn.execute(f"ALTER TABLE server_samples ADD COLUMN {col}")
+                except sqlite3.OperationalError:
+                    pass  #column already exists
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
+        #Cumulative-counter baseline for the network-rate computation:
+        #(unix_ts, rx_bytes, tx_bytes) from the previous tick. None
+        #after a restart, which makes the first sample record nulls
+        #for the rates rather than a huge spike from uptime-since-boot.
+        self._last_net: tuple[int, int, int] | None = None
 
     def _record_one(self) -> None:
         now = int(time.time())
         load = _load_1m()
         mem  = _read_meminfo_pct()
         disk = _disk_used_pct()
+
+        #Network bandwidth: (bytes delta) / (seconds delta) -> Mbps.
+        #/proc/net/dev counters are cumulative since boot, so we keep
+        #the previous tick in memory and emit the rate per sample.
+        rx_mbps = tx_mbps = None
+        net = _read_net_bytes()
+        if net is not None:
+            rx_bytes, tx_bytes = net
+            if self._last_net is not None:
+                last_ts, last_rx, last_tx = self._last_net
+                dt = now - last_ts
+                if dt > 0:
+                    drx = max(0, rx_bytes - last_rx)
+                    dtx = max(0, tx_bytes - last_tx)
+                    rx_mbps = round(drx * 8 / dt / 1_000_000, 3)
+                    tx_mbps = round(dtx * 8 / dt / 1_000_000, 3)
+            self._last_net = (now, rx_bytes, tx_bytes)
+
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
-                    "INSERT OR REPLACE INTO server_samples (ts, load_1m, mem_used_pct, disk_used_pct) "
-                    "VALUES (?, ?, ?, ?)",
-                    (now, load, mem, disk),
+                    "INSERT OR REPLACE INTO server_samples "
+                    "(ts, load_1m, mem_used_pct, disk_used_pct, net_rx_mbps, net_tx_mbps) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (now, load, mem, disk, rx_mbps, tx_mbps),
                 )
         except sqlite3.Error as exc:
             log.warning("server_samples insert failed: %s", exc)
@@ -124,12 +181,13 @@ class ServerSampler:
 
     #---- Read-side helpers used by the /api/stats aggregation ----
 
-    def samples_since(self, since_unix: int) -> list[tuple[int, float | None, float | None, float | None]]:
+    def samples_since(self, since_unix: int) -> list[tuple]:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cur = conn.execute(
-                    "SELECT ts, load_1m, mem_used_pct, disk_used_pct FROM server_samples "
-                    "WHERE ts >= ? ORDER BY ts",
+                    "SELECT ts, load_1m, mem_used_pct, disk_used_pct, "
+                    "       net_rx_mbps, net_tx_mbps "
+                    "FROM server_samples WHERE ts >= ? ORDER BY ts",
                     (since_unix,),
                 )
                 return cur.fetchall()
@@ -162,26 +220,32 @@ def averaged_buckets(samples, now: datetime,
     for i in range(count):
         bucket_keys.append((start + i * step).strftime(fmt))
 
-    #Per-bucket running sums + counts for each metric.
-    sums  = {k: [0.0, 0.0, 0.0] for k in bucket_keys}
-    cnts  = {k: [0,   0,   0  ] for k in bucket_keys}
-    for ts, load, mem, disk in samples:
+    #Per-bucket running sums + counts for each metric. Five tracked
+    #series: load, mem%, disk%, network rx Mbps, network tx Mbps.
+    sums  = {k: [0.0, 0.0, 0.0, 0.0, 0.0] for k in bucket_keys}
+    cnts  = {k: [0,   0,   0,   0,   0  ] for k in bucket_keys}
+    for row in samples:
+        ts = row[0]
+        load = row[1] if len(row) > 1 else None
+        mem  = row[2] if len(row) > 2 else None
+        disk = row[3] if len(row) > 3 else None
+        nrx  = row[4] if len(row) > 4 else None
+        ntx  = row[5] if len(row) > 5 else None
         d = datetime.fromtimestamp(ts, tz=timezone.utc)
         k = d.strftime(fmt)
         if k not in sums:
             continue
-        if load is not None:
-            sums[k][0] += load; cnts[k][0] += 1
-        if mem  is not None:
-            sums[k][1] += mem;  cnts[k][1] += 1
-        if disk is not None:
-            sums[k][2] += disk; cnts[k][2] += 1
+        if load is not None: sums[k][0] += load; cnts[k][0] += 1
+        if mem  is not None: sums[k][1] += mem;  cnts[k][1] += 1
+        if disk is not None: sums[k][2] += disk; cnts[k][2] += 1
+        if nrx  is not None: sums[k][3] += nrx;  cnts[k][3] += 1
+        if ntx  is not None: sums[k][4] += ntx;  cnts[k][4] += 1
 
-    def _series(idx: int) -> list[dict]:
+    def _series(idx: int, decimals: int = 2) -> list[dict]:
         out: list[dict] = []
         for k in bucket_keys:
             n = cnts[k][idx]
-            v = round(sums[k][idx] / n, 2) if n > 0 else None
+            v = round(sums[k][idx] / n, decimals) if n > 0 else None
             out.append({"label": k, "value": v})
         return out
 
@@ -189,4 +253,6 @@ def averaged_buckets(samples, now: datetime,
         "load_1m":       _series(0),
         "mem_used_pct":  _series(1),
         "disk_used_pct": _series(2),
+        "net_rx_mbps":   _series(3, decimals=3),
+        "net_tx_mbps":   _series(4, decimals=3),
     }

@@ -382,6 +382,66 @@ def _daily_buckets(rows: list[LogRow], now: datetime, window_days: int) -> list[
     return [{"label": k, "count": v} for k, v in buckets.items()]
 
 
+def _per_country_buckets(visits: list, geo: dict, now: datetime,
+                         window_hours: int | None = None,
+                         window_days: int | None = None,
+                         top_n: int = 8) -> dict:
+    """Bucket visits by time + country, return a Chart.js payload
+    {labels, datasets: [{country, data}]} suitable for a multi-line
+    chart. Only the top `top_n` countries by total visits in the
+    window get their own line; the rest are folded into "Other" so
+    the chart legend stays readable.
+    """
+    assert (window_hours is None) ^ (window_days is None)
+    if window_hours is not None:
+        start = (now - timedelta(hours=window_hours - 1)).replace(minute=0, second=0, microsecond=0)
+        step  = timedelta(hours=1)
+        count = window_hours
+        fmt   = "%Y-%m-%dT%H"
+    else:
+        start = (now - timedelta(days=window_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        step  = timedelta(days=1)
+        count = window_days
+        fmt   = "%Y-%m-%d"
+
+    labels = [(start + i * step).strftime(fmt) for i in range(count)]
+    key_to_index = {k: i for i, k in enumerate(labels)}
+
+    #First pass: total per country in window so we know which
+    #countries to keep as their own line.
+    totals: dict[str, int] = defaultdict(int)
+    for v in visits:
+        _, name = geo.get(v.ip, (None, None))
+        totals[name or "Unknown"] += 1
+    if not totals:
+        return {"labels": labels, "datasets": []}
+    ranked = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)
+    keep = {name for name, _ in ranked[:top_n]}
+
+    #Second pass: bucketed counts per kept country (or "Other").
+    by_country: dict[str, list[int]] = {}
+    for v in visits:
+        k = v.ts.strftime(fmt)
+        i = key_to_index.get(k)
+        if i is None:
+            continue
+        _, name = geo.get(v.ip, (None, None))
+        bucket_name = (name or "Unknown") if (name or "Unknown") in keep else "Other"
+        if bucket_name not in by_country:
+            by_country[bucket_name] = [0] * count
+        by_country[bucket_name][i] += 1
+
+    #Order datasets the way the user reads them: largest total
+    #first, "Other" last so it never steals the top legend slot.
+    ordered: list[str] = [name for name, _ in ranked if name in by_country and name != "Other"]
+    if "Other" in by_country:
+        ordered.append("Other")
+    return {
+        "labels":   labels,
+        "datasets": [{"country": name, "data": by_country[name]} for name in ordered],
+    }
+
+
 def _ts_hourly_buckets(timestamps: list[int], now: datetime, window_hours: int) -> list[dict]:
     """Same as _hourly_buckets but takes raw unix timestamps."""
     buckets: dict[str, int] = {}
@@ -646,6 +706,14 @@ class StatsSnapshot(NamedTuple):
     downloads_pv_hourly_7d:  dict
     downloads_pv_daily_30d:  dict
     downloads_pv_daily_1y:   dict
+    #Per-country visits over time: multi-line-chart-ready
+    #{labels, datasets[]} where each dataset is {country, data[]}.
+    #Top 8 countries by total in window each get their own line; the
+    #rest are folded into one "Other" line.
+    countries_hourly_24h: dict
+    countries_hourly_7d:  dict
+    countries_daily_30d:  dict
+    countries_daily_1y:   dict
 
 
 CACHE_TTL_SECONDS = 5 * 60
@@ -709,11 +777,16 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
 
         #Geo: best-effort. Resolve up to 100 new IPs this call;
         #the rest stay "Unknown" until they get resolved on a
-        #later refresh.
+        #later refresh. The 1y window only pulls already-cached
+        #entries since we don't want a year of unknown IPs to all
+        #queue up for resolution at once.
         ips_30d = {v.ip for v in visits_30d}
         cached_geo = _geo.lookup_all(ips_30d)
         fresh_geo  = _geo.resolve_missing(ips_30d - set(cached_geo))
         cached_geo.update(fresh_geo)
+        ips_1y = {v.ip for v in visits_1y}
+        geo_1y = _geo.lookup_all(ips_1y)
+        geo_1y.update(cached_geo)
         country_counts: dict[str, int] = defaultdict(int)
         for v in visits_30d:
             cc, name = cached_geo.get(v.ip, (None, None))
@@ -908,6 +981,10 @@ def get_snapshot(geo_db_path: Path, stats_store=None, downloads_module=None,
             downloads_pv_hourly_7d =dl_pv_7d,
             downloads_pv_daily_30d =dl_pv_30d,
             downloads_pv_daily_1y  =dl_pv_1y,
+            countries_hourly_24h=_per_country_buckets(visits_24h, cached_geo, now, window_hours=24),
+            countries_hourly_7d =_per_country_buckets(visits_7d,  cached_geo, now, window_hours=24 * 7),
+            countries_daily_30d =_per_country_buckets(visits_30d, cached_geo, now, window_days=30),
+            countries_daily_1y  =_per_country_buckets(visits_1y,  geo_1y,     now, window_days=365),
         )
         _cache = snapshot
         return snapshot
@@ -967,4 +1044,8 @@ def snapshot_to_dict(snap: StatsSnapshot) -> dict:
         "downloads_pv_hourly_7d":  snap.downloads_pv_hourly_7d,
         "downloads_pv_daily_30d":  snap.downloads_pv_daily_30d,
         "downloads_pv_daily_1y":   snap.downloads_pv_daily_1y,
+        "countries_hourly_24h":    snap.countries_hourly_24h,
+        "countries_hourly_7d":     snap.countries_hourly_7d,
+        "countries_daily_30d":     snap.countries_daily_30d,
+        "countries_daily_1y":      snap.countries_daily_1y,
     }
