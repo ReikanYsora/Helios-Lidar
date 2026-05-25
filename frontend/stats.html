@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" class="page-short" data-page="stats">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,7 +25,9 @@
   <main>
     <header>
       <div class="brand-banner">
-        <img src="/static/helios-icon.png" alt="Helios" class="brand-icon">
+        <a href="/" aria-label="Back to Helios-Lidar home">
+          <img src="/static/helios-icon.png" alt="Helios" class="brand-icon">
+        </a>
       </div>
       <div class="brand-strip">
         <span class="brand-strip-text">A 3D solar card for <a href="https://www.home-assistant.io/" target="_blank" rel="noopener">Home Assistant</a>, and the tool that feeds it your LiDAR data</span>
@@ -89,31 +91,11 @@
 
     <section class="card stats-histogram" data-hist="downloads">
       <header class="histogram-header">
-        <h2>Card downloads over time</h2>
-        <div class="histogram-tabs" role="tablist" aria-label="Time range">
-          <button type="button" class="hist-tab is-active" data-range="24h" role="tab" aria-selected="true">24 h</button>
-          <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
-          <button type="button" class="hist-tab"           data-range="30d" role="tab" aria-selected="false">30 days</button>
-          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
-        </div>
+        <h2>Card downloads per version</h2>
       </header>
       <div class="chart-wrap chart-wrap--wide">
-        <canvas id="chart-histogram-downloads"></canvas>
+        <canvas id="chart-downloads-per-version"></canvas>
       </div>
-    </section>
-
-    <section class="card stats-histogram" data-hist="donations">
-      <header class="histogram-header">
-        <h2>Donations (Buy Me a Coffee)</h2>
-        <div class="histogram-tabs" role="tablist" aria-label="Time range">
-          <button type="button" class="hist-tab is-active" data-range="30d" role="tab" aria-selected="true">30 days</button>
-          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
-        </div>
-      </header>
-      <div class="chart-wrap chart-wrap--wide">
-        <canvas id="chart-histogram-donations"></canvas>
-      </div>
-      <p class="donations-note" id="donations-note"></p>
     </section>
 
     <section class="card stats-histogram" data-hist="server">
@@ -191,6 +173,11 @@
       <a class="footer-link" href="/privacy">
         <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2 4 5v6.5c0 4.8 3.4 9.2 8 10.5 4.6-1.3 8-5.7 8-10.5V5l-8-3zm-1 14-4-4 1.4-1.4 2.6 2.6 5.6-5.6L18 9l-7 7z"/></svg>
         <span>Privacy</span>
+      </a>
+      <span class="sep">&mdash;</span>
+      <a class="footer-link" href="/stats">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 21h18v2H3v-2zm2-8h3v6H5v-6zm5-5h3v11h-3V8zm5-4h3v15h-3V4zm5 8h3v7h-3v-7z"/></svg>
+        <span>Stats</span>
       </a>
     </div>
   </footer>

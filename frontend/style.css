@@ -117,21 +117,19 @@ main
     padding: 0 24px 24px;
 }
 
-/*  /stats and /privacy don't need main to grow to fill the
-    viewport: their content is short enough that the flex: 1
-    creates a visible gap between the inner footer (Back link /
-    last-refresh stamp) and the page-wide footer-glow. Letting
-    main collapse to its content height drops the gap.           */
-main:has(.stats-main),
-main:has(.privacy-main)
+/*  /stats and /privacy carry .page-short on <html> so we can
+    target them without depending on :has() (Firefox + older
+    browsers still flake on it). main collapses to its content
+    height so the gap between the inner footer (Back link / last-
+    refresh stamp) and the page-wide footer-glow disappears.    */
+html.page-short main
 {
     flex: 0 0 auto;
 }
-/*  The dashboard benefits from a wider canvas than the upload
-    page's 860 px column; let it use up to 1100 px (matches the
-    stats-main max-width). Privacy stays narrow for readability.  */
-main:has(.stats-main)
+html.page-short[data-page="stats"] main,
+html.page-short main:has(.stats-main)
 {
+    /*  Dashboard breathes wider than the upload page's 860 px. */
     max-width: 1100px;
 }
 
@@ -218,6 +216,19 @@ header h1
     width: auto;
     max-width: 100%;
     display: block;
+}
+
+/*  The icon is wrapped in an anchor on every page so a click on
+    the logo navigates back to the home page. The anchor keeps the
+    icon's full height + centred composition by becoming a flex
+    container.                                                    */
+.brand-banner > a
+{
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
 }
 
 /*  Top strip: flags right-aligned on a light background, full

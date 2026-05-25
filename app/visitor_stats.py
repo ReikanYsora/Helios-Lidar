@@ -453,25 +453,39 @@ def _snapshots_to_deltas(snapshots: list[tuple[int, int]],
             bucket_keys.append((start + timedelta(days=i)).strftime("%Y-%m-%d"))
         fmt = "%Y-%m-%d"
 
-    #Largest cumulative count seen in each bucket; -1 marks empty
+    #Largest + smallest cumulative count seen in each bucket; -1
+    #marks an empty bucket. Tracking both lets us compute within-
+    #bucket activity when no pre-window baseline is available.
     bucket_max: dict[str, int] = {k: -1 for k in bucket_keys}
+    bucket_min: dict[str, int] = {k: -1 for k in bucket_keys}
     for ts, total in snapshots:
         d = datetime.fromtimestamp(ts, tz=timezone.utc)
         key = d.strftime(fmt)
-        if key in bucket_max and total > bucket_max[key]:
+        if key not in bucket_max:
+            continue
+        if bucket_max[key] < 0 or total > bucket_max[key]:
             bucket_max[key] = total
+        if bucket_min[key] < 0 or total < bucket_min[key]:
+            bucket_min[key] = total
 
     prev = baseline[1] if baseline is not None else None
     out: list[dict] = []
     for k in bucket_keys:
-        cur = bucket_max[k]
-        if cur < 0:
+        cur_max = bucket_max[k]
+        if cur_max < 0:
             #No snapshot in this bucket: it counts as 0 new downloads.
             out.append({"label": k, "count": 0})
         else:
-            delta = 0 if prev is None else max(0, cur - prev)
+            if prev is None:
+                #First bucket without any pre-window baseline: use the
+                #bucket's own min as the implicit baseline so we can
+                #still show the within-bucket activity instead of a
+                #flat zero. Subsequent buckets inherit prev=cur_max.
+                delta = max(0, cur_max - bucket_min[k])
+            else:
+                delta = max(0, cur_max - prev)
             out.append({"label": k, "count": delta})
-            prev = cur
+            prev = cur_max
     return out
 
 

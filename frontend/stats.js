@@ -269,18 +269,12 @@ const histograms = {
         '24h': 'conversions_hourly_24h', '7d': 'conversions_hourly_7d',
         '30d': 'conversions_daily_30d',  '1y': 'conversions_daily_1y',
     }, accent: () => '#22c55e' },
-    downloads:   { chart: null, range: '24h', src: {
-        '24h': 'downloads_hourly_24h', '7d': 'downloads_hourly_7d',
-        '30d': 'downloads_daily_30d',  '1y': 'downloads_daily_1y',
-    }, accent: () => '#3b82f6' },
-    donations:   { chart: null, range: '30d', src: {
-        '30d': 'donations_daily_30d', '1y': 'donations_daily_1y',
-    }, accent: () => '#ec4899' },
     server:      { chart: null, range: '24h', src: {
         '24h': 'server_hourly_24h', '7d': 'server_daily_7d',
         '30d': 'server_daily_30d',  '1y': 'server_daily_1y',
     }, accent: () => readCssVar('--accent', '#f5a623') },
 };
+let downloadsByVersionChart = null;
 let snapshot = null;
 
 function applyHistogram(name)
@@ -311,20 +305,42 @@ function applyHistogram(name)
     }
 }
 
-function updateDonationsNote()
+//Per-version downloads bar chart (cumulative count per release
+//tag). Sourced from /api/helios-downloads which we already proxy
+//and surface inside /api/stats? No: it's a separate field on the
+//main page only. We re-fetch the same endpoint here, lightly,
+//since it has its own 5-min cache server-side.
+async function renderDownloadsPerVersion()
 {
-    const el = document.getElementById('donations-note');
-    if (!el || !snapshot) return;
-    if (snapshot.donations_configured)
+    const ctx = document.getElementById('chart-downloads-per-version');
+    if (!ctx) return;
+    let data;
+    try
     {
-        const total = snapshot.donations_total_amount || 0;
-        try { el.textContent = `All-time total: ${total.toLocaleString()} (Buy Me a Coffee).`; }
-        catch (_) { el.textContent = `All-time total: ${total} (Buy Me a Coffee).`; }
+        const resp = await fetch('/api/helios-downloads', { credentials: 'omit' });
+        if (!resp.ok) return;
+        data = await resp.json();
     }
-    else
-    {
-        el.textContent = 'Set the BMAC_TOKEN env var on the VPS to enable donations history.';
-    }
+    catch (_) { return; }
+    if (!data || !Array.isArray(data.by_version)) return;
+    const versions = [...data.by_version].reverse();  //oldest -> newest reads as a timeline
+    if (downloadsByVersionChart) { downloadsByVersionChart.destroy(); downloadsByVersionChart = null; }
+    const accent = readCssVar('--accent', '#f5a623');
+    const opts = barOptions('static');
+    //Tooltip wants the full tag, not the truncated X-axis label.
+    opts.plugins.tooltip.callbacks = { title: (items) => items[0].label };
+    downloadsByVersionChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels:   versions.map((v) => v.tag),
+            datasets: [{
+                data: versions.map((v) => v.downloads),
+                backgroundColor: accent,
+                borderRadius: 3, borderSkipped: false, maxBarThickness: 48,
+            }],
+        },
+        options: opts,
+    });
 }
 
 async function loadStats()
@@ -352,23 +368,8 @@ async function loadStats()
         renderDoughnut('chart-referrers', snapshot.referrers);
     }
 
-    //BMaC's API is opaque for now (the only public scope is
-    //"read-only" and our token still returns Unauthenticated as
-    //of May 2026), so hide the donations card until they ship a
-    //usable token flow. We keep the section's markup + backend
-    //wiring intact so a future re-enable is a one-line CSS flip.
-    const donationsSection = document.querySelector('[data-hist="donations"]');
-    if (donationsSection)
-    {
-        donationsSection.style.display = 'none';
-    }
-
-    Object.keys(histograms).forEach((name) =>
-    {
-        if (name === 'donations') return;
-        applyHistogram(name);
-    });
-    updateDonationsNote();
+    Object.keys(histograms).forEach(applyHistogram);
+    renderDownloadsPerVersion();
 
     const refreshEl = document.getElementById('stats-fetched-at');
     if (refreshEl && snapshot.fetched_at_unix)

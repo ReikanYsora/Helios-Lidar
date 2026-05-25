@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" class="page-short">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,7 +25,9 @@
   <main>
     <header>
       <div class="brand-banner">
-        <img src="/static/helios-icon.png" alt="Helios" class="brand-icon">
+        <a href="/" aria-label="Back to Helios-Lidar home">
+          <img src="/static/helios-icon.png" alt="Helios" class="brand-icon">
+        </a>
       </div>
       <div class="brand-strip">
         <span class="brand-strip-text">A 3D solar card for <a href="https://www.home-assistant.io/" target="_blank" rel="noopener">Home Assistant</a>, and the tool that feeds it your LiDAR data</span>
@@ -123,6 +125,11 @@
       <a class="footer-link" href="mailto:jcremoux@gmail.com">
         <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 5h18a1 1 0 0 1 1 1v.4l-10 6.1L2 6.4V6a1 1 0 0 1 1-1zm19 4.3V18a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V9.3l9.5 5.8a1 1 0 0 0 1 0L22 9.3z"/></svg>
         <span>Contact me</span>
+      </a>
+      <span class="sep">&mdash;</span>
+      <a class="footer-link" href="/stats">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 21h18v2H3v-2zm2-8h3v6H5v-6zm5-5h3v11h-3V8zm5-4h3v15h-3V4zm5 8h3v7h-3v-7z"/></svg>
+        <span>Stats</span>
       </a>
     </div>
   </footer>
