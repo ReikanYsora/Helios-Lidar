@@ -153,11 +153,33 @@ async function bootstrap()
         attributionControl: false,
     }).setView([45, 5], 3);
 
-    L.tileLayer('https://tiles.openfreemap.org/styles/positron/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-        crossOrigin: true,
-    }).addTo(map);
-    L.control.attribution({ prefix: false, position: 'bottomright' }).addTo(map);
+    //Carto raster tile layers, one per theme. We keep both around
+    //and swap which is on the map when the site theme flips, so the
+    //basemap palette stays in sync with the surrounding chrome.
+    //Carto tiles are CDN-cached, free for moderate use, and visually
+    //match the OpenFreeMap positron style the Helios card uses.
+    const tileLight = L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        { subdomains: 'abcd', maxZoom: 19, crossOrigin: true }
+    );
+    const tileDark = L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        { subdomains: 'abcd', maxZoom: 19, crossOrigin: true }
+    );
+    function applyTileTheme(t)
+    {
+        if (t === 'light')
+        {
+            if (map.hasLayer(tileDark))  map.removeLayer(tileDark);
+            if (!map.hasLayer(tileLight)) tileLight.addTo(map);
+        }
+        else
+        {
+            if (map.hasLayer(tileLight)) map.removeLayer(tileLight);
+            if (!map.hasLayer(tileDark)) tileDark.addTo(map);
+        }
+    }
+    applyTileTheme(theme);
 
     //Draw one rectangle per provider. Colours come from CSS variables
     //so a theme flip recolours them via the MutationObserver below.
@@ -252,6 +274,7 @@ async function bootstrap()
                 if (t === 'light' || t === 'dark')
                 {
                     demoHandle.setTheme?.(t);
+                    applyTileTheme(t);
                     const nv = versionColors();
                     rectangles.forEach((r, i) =>
                     {
