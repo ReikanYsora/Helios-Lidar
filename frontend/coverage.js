@@ -13,6 +13,13 @@
 //the Helios card repo. Update both when a new provider lands; the
 //`firstStableVersion` field drives the legend colour.
 
+//ha-shims is a side-effect-only import: it installs the global
+//Home-Assistant compatibility shims (customElements registration
+//stubs, frontend helper aliases, etc.) the Helios card expects to
+//find on `window` at module load. Without it the embedded card boots
+//with broken sun arc / LiDAR button / timeline / dashboard because
+//its internal helpers fall through to no-op fallbacks.
+import '/static/ha-shims.js';
 import {
     SUPPORTED_LANGS,
     LANG_FLAGS,
@@ -174,6 +181,64 @@ async function bootstrap()
     //the MutationObserver below can still call something without a
     //branch.
     function applyTileTheme(_t) { /* OSM basemap is theme-neutral */ }
+
+    //Geolocation control, top-right pill button. Clicking it triggers
+    //the browser permission prompt, then pans + zooms the map to the
+    //user's GPS coords and re-anchors the embedded demo card. Wrapped
+    //in a try/catch on the navigator call because Safari throws when
+    //the page is not served over HTTPS, the user is offline, or the
+    //OS denied location services system-wide.
+    const LocateControl = L.Control.extend({
+        options: { position: 'topright' },
+        onAdd: function ()
+        {
+            const btn = L.DomUtil.create('button', 'coverage-locate-btn leaflet-bar');
+            btn.type = 'button';
+            btn.title = 'Center on my location';
+            btn.setAttribute('aria-label', 'Center on my location');
+            //Crosshair / target glyph, same visual family as Helios's
+            //own home-marker in the card chrome.
+            btn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="12" y1="1" x2="12" y2="5" stroke="currentColor" stroke-width="1.6"/><line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="1.6"/><line x1="1" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="1.6"/><line x1="19" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="1.6"/></svg>';
+            L.DomEvent.disableClickPropagation(btn);
+            L.DomEvent.on(btn, 'click', () =>
+            {
+                if (!navigator.geolocation)
+                {
+                    btn.classList.add('is-error');
+                    return;
+                }
+                btn.classList.add('is-loading');
+                try
+                {
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) =>
+                        {
+                            btn.classList.remove('is-loading', 'is-error');
+                            const lat = pos.coords.latitude;
+                            const lon = pos.coords.longitude;
+                            //Zoom 18 lands on a city block, plenty of
+                            //room to identify the user's roof.
+                            map.setView([lat, lon], 18);
+                            jumpTo(lat, lon);
+                        },
+                        (_err) =>
+                        {
+                            btn.classList.remove('is-loading');
+                            btn.classList.add('is-error');
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                    );
+                }
+                catch (_)
+                {
+                    btn.classList.remove('is-loading');
+                    btn.classList.add('is-error');
+                }
+            });
+            return btn;
+        },
+    });
+    map.addControl(new LocateControl());
 
     //Draw one rectangle per provider. Colours come from CSS variables
     //so a theme flip recolours them via the MutationObserver below.

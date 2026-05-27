@@ -28,7 +28,13 @@
 //uses to forward language + theme changes from its switchers to
 //the embedded card.
 
-const HELIOS_BUNDLE_URL = 'https://cdn.jsdelivr.net/gh/ReikanYsora/Helios@v1.6.4/dist/helios.js';
+//Self-hosted Helios card bundle. Served by nginx alongside the rest
+//of /static/*; refreshed automatically by .github/workflows/publish-
+//helios-bundle.yml on the Helios card repo whenever a new release
+//(or prerelease) lands. Hosting locally instead of pulling from a
+//CDN lets us version-pin to the bundle currently on disk without
+//touching any source file, the workflow just overwrites the bytes.
+const HELIOS_BUNDLE_URL = '/static/helios-card-bundle.js';
 
 //Fictional demo home: a residential address near Montpellier,
 //well inside IGN HD France's LiDAR coverage so the LiDAR layer
