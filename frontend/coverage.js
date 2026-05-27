@@ -87,6 +87,38 @@ function getSavedTheme()
 }
 
 
+//Wire the sun/moon pill at the top-right. Click sets the active theme, persists it in localStorage and flips data-theme on html; the
+//MutationObserver in bootstrap() then forwards the change to the embedded card, recolours the legend swatches and updates the rectangle
+//stroke / fill on the world map. The two button .is-active classes stay in sync so the pill always reflects the current theme.
+function wireThemeToggle()
+{
+    const root = document.getElementById('site-theme-toggle');
+    if (!root) return;
+    const buttons = Array.from(root.querySelectorAll('.theme-btn'));
+    function applyState(theme)
+    {
+        for (const b of buttons)
+        {
+            const isActive = (b.dataset.theme === theme);
+            b.classList.toggle('is-active', isActive);
+            b.setAttribute('aria-checked', isActive ? 'true' : 'false');
+        }
+    }
+    buttons.forEach((btn) =>
+    {
+        btn.addEventListener('click', () =>
+        {
+            const theme = btn.dataset.theme;
+            if (theme !== 'light' && theme !== 'dark') return;
+            document.documentElement.setAttribute('data-theme', theme);
+            try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch (_) {}
+            applyState(theme);
+        });
+    });
+    applyState(document.documentElement.getAttribute('data-theme') || 'dark');
+}
+
+
 //----------------------------------------------------------------- lang switcher
 
 function mountLangSwitcher(initialLang, onChange)
@@ -386,6 +418,7 @@ async function bootstrap()
 
     //Language switcher wired AFTER the demo handle exists so its
     //onChange can forward locale changes to the card too.
+    wireThemeToggle();
     mountLangSwitcher(initialLang, (lang) =>
     {
         demoHandle.setLanguage?.(lang);

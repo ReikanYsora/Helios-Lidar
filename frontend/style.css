@@ -1714,6 +1714,19 @@ footer .sep
     color: var(--accent);
     text-decoration: none;
 }
+/*  Buy Me a Coffee variant of the star-button pill. Same shape and
+    layout so the row reads as one cluster, just no trailing count
+    chip since there's no live count to display.                     */
+.gh-star-btn.bmc-btn
+{
+    color: var(--accent);
+}
+.gh-star-btn.bmc-btn:hover
+{
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
 .gh-star-btn svg
 {
     width: 16px;
@@ -2132,23 +2145,6 @@ footer .sep
     height: 16px;
     display: block;
     flex-shrink: 0;
-}
-
-.bmc-row
-{
-    margin-top: 14px;
-    display: flex;
-    justify-content: center;
-    /*  Force the BMaC badge onto its own row inside the flex-wrap
-        footer-inner cluster: flex-basis 100 % means it always
-        breaks the line, no matter how narrow the viewport is.   */
-    flex-basis: 100%;
-}
-
-.bmc-row img
-{
-    height: 22px;
-    display: block;
 }
 
 code

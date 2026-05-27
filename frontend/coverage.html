@@ -41,10 +41,14 @@
   <div class="bg-blur bg-blur--right" aria-hidden="true"></div>
   <div class="lang-strip">
     <div class="lang-strip-left">
-      <a class="repo-link" href="https://github.com/ReikanYsora/Helios" target="_blank" rel="noopener" aria-label="Helios GitHub repository">
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
-      </a>
-      <span class="site-version" aria-label="Site version">v1.6.4</span>
+      <div class="theme-toggle" id="site-theme-toggle" role="radiogroup" aria-label="Theme">
+        <button type="button" class="theme-btn is-active" role="radio" aria-checked="true" data-theme="dark" aria-label="Dark theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
+        </button>
+        <button type="button" class="theme-btn" role="radio" aria-checked="false" data-theme="light" aria-label="Light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g></svg>
+        </button>
+      </div>
     </div>
     <div class="lang-switcher" id="lang-switcher" aria-label="Language"></div>
   </div>
@@ -130,11 +134,6 @@
         <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 21h18v2H3v-2zm2-8h3v6H5v-6zm5-5h3v11h-3V8zm5-4h3v15h-3V4zm5 8h3v7h-3v-7z"/></svg>
         <span data-i18n="footerStats">Stats</span>
       </a>
-      <div class="bmc-row">
-        <a href="https://www.buymeacoffee.com/reikanysora" target="_blank" rel="noopener">
-          <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Donate-orange?style=flat-square&logo=buy-me-a-coffee" alt="Buy Me a Coffee">
-        </a>
-      </div>
     </div>
   </footer>
 
