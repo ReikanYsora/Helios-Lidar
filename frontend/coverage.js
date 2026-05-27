@@ -217,7 +217,11 @@ async function bootstrap()
                             const lat = pos.coords.latitude;
                             const lon = pos.coords.longitude;
                             //Zoom 18 lands on a city block, plenty of
-                            //room to identify the user's roof.
+                            //room to identify the user's roof. The
+                            //building presence check is skipped here,
+                            //the GPS reading IS the user's home so
+                            //even if OSM doesn't have a footprint for
+                            //it yet we trust their position.
                             map.setView([lat, lon], 18);
                             jumpTo(lat, lon);
                         },
@@ -297,19 +301,91 @@ async function bootstrap()
         locReadout.textContent = `${coordText} , ${status}`;
     }
 
+    //Locally tracked "last committed home" so the readout can be
+    //restored after a click that fails the building presence check.
+    let currentHome = { lat: DEFAULT_HOME.lat, lon: DEFAULT_HOME.lon };
+
     function jumpTo(lat, lon)
     {
         if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
         if (lat < -85 || lat > 85) return;
         const wrappedLon = ((lon + 180) % 360 + 360) % 360 - 180;
+        currentHome = { lat, lon: wrappedLon };
         demoHandle.setLocation?.({ lat, lon: wrappedLon });
         updateReadout(lat, wrappedLon);
     }
 
-    //All map clicks (including ones on rectangle overlays) bubble up
-    //to the map; Leaflet rectangles don't stopPropagation by default
-    //so a single handler covers both cases.
-    map.on('click', (e) => jumpTo(e.latlng.lat, e.latlng.lng));
+    //Building presence check via Overpass API. The demo card is
+    //only useful when there's actually a building at the clicked
+    //point, a roof / driveway / garden, otherwise the 3D scene
+    //shows an empty plot and the user thinks the card is broken.
+    //We query OSM for any `building=*` way within ~15 m of the
+    //click and fail open on timeout so a slow Overpass round-trip
+    //doesn't strand the user staring at an unreactive map.
+    async function hasBuildingNearby(lat, lon, signal)
+    {
+        const query = `[out:json][timeout:5];way(around:15,${lat},${lon})[building];out 1 ids;`;
+        const url   = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
+        try
+        {
+            const r = await fetch(url, { signal, headers: { Accept: 'application/json' } });
+            if (!r.ok) return true;
+            const d = await r.json();
+            return Array.isArray(d.elements) && d.elements.length > 0;
+        }
+        catch (_)
+        {
+            //Network error, AbortError, JSON parse error, all fail
+            //open. The user gets a click that lands on (probably)
+            //empty ground, but the alternative is silently ignoring
+            //every click whenever Overpass is rate-limited or down.
+            return true;
+        }
+    }
+
+    //In-flight click abort so a quick second click cancels the
+    //first Overpass round-trip instead of stacking them.
+    let pendingClickAbort = null;
+    //Reusable popup for "no building here" feedback. Bound to the
+    //map so calls in quick succession reposition rather than stack.
+    const noBuildingPopup = L.popup({
+        closeButton:    false,
+        autoClose:      true,
+        closeOnClick:   true,
+        className:      'coverage-no-bldg-popup',
+        offset:         [0, -8],
+    });
+
+    map.on('click', async (e) =>
+    {
+        if (pendingClickAbort) pendingClickAbort.abort();
+        const ac = new AbortController();
+        pendingClickAbort = ac;
+
+        //Loading cursor + readout hint while Overpass replies, so the
+        //user knows the click registered even though nothing moves
+        //yet. ~150-800 ms typical round-trip.
+        document.body.classList.add('coverage-querying-osm');
+        locReadout.textContent = '...';
+
+        const hasBldg = await hasBuildingNearby(e.latlng.lat, e.latlng.lng, ac.signal);
+
+        document.body.classList.remove('coverage-querying-osm');
+        if (ac.signal.aborted) return;
+        pendingClickAbort = null;
+
+        if (!hasBldg)
+        {
+            noBuildingPopup
+                .setLatLng(e.latlng)
+                .setContent('<strong>No building here</strong><br/>Click on a roof to drop the demo on it.')
+                .openOn(map);
+            //Restore the previous readout, the location hasn't moved.
+            updateReadout(currentHome.lat, currentHome.lon);
+            return;
+        }
+        jumpTo(e.latlng.lat, e.latlng.lng);
+    });
 
     updateReadout(DEFAULT_HOME.lat, DEFAULT_HOME.lon);
 
