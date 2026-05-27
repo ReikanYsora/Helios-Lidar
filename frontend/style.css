@@ -1644,6 +1644,79 @@ footer .sep
 }
 
 /*  ============================================================
+    Press section, sits between About Helios and the primer.
+    Lists external articles / videos / community posts that
+    cover Helios. Manually curated list, expanded over time.
+    Each entry is a clickable card with title + source + date
+    + a one-line quote pulled from the article.                   */
+.press-list
+{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.press-item
+{
+    margin: 0;
+}
+.press-link
+{
+    display: block;
+    padding: 14px 16px;
+    background: var(--surface, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.10));
+    border-radius: 10px;
+    color: inherit;
+    text-decoration: none;
+    transition: background 120ms ease, border-color 120ms ease;
+}
+.press-link:hover,
+.press-link:focus-visible
+{
+    background: var(--surface-2, rgba(255, 215, 130, 0.08));
+    border-color: rgba(255, 215, 130, 0.4);
+}
+.press-title
+{
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent, #f5a623);
+}
+.press-meta
+{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+}
+.press-source
+{
+    font-weight: 600;
+}
+.press-date
+{
+    font-variant-numeric: tabular-nums;
+}
+.press-quote
+{
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink);
+    font-style: italic;
+    border-left: 2px solid var(--accent, #f5a623);
+    padding-left: 10px;
+    opacity: 0.92;
+}
+
+
+/*  ============================================================
     GitHub stars row, sits under "Merci !" inside the explainer
     card. Two pill buttons, each pairs a GitHub mark + repo name
     + live star count fetched at load. Clicking opens the repo
@@ -1723,6 +1796,49 @@ footer .sep
     margin: 0 auto;
     padding: 24px;
     flex: 1;
+}
+/*  While .is-loading is set on .stats-main, hide every direct
+    descendant except the loading curtain + the header (the
+    header stays so the visitor sees "Helios Analytics" and
+    knows they reached the right page). The curtain shows its
+    own spinner + label. Class is dropped from JS once the first
+    /api/stats fetch returns a payload.                          */
+.stats-main.is-loading > :not(.stats-loading-curtain):not(.stats-header)
+{
+    display: none !important;
+}
+.stats-main:not(.is-loading) > .stats-loading-curtain
+{
+    display: none;
+}
+.stats-loading-curtain
+{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+    gap: 16px;
+    color: var(--ink-soft);
+}
+.stats-loading-spinner
+{
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border, rgba(255, 255, 255, 0.15));
+    border-top-color: var(--accent, #f5a623);
+    border-radius: 50%;
+    animation: stats-spin 0.9s linear infinite;
+}
+@keyframes stats-spin
+{
+    to { transform: rotate(360deg); }
+}
+.stats-loading-text
+{
+    margin: 0;
+    font-size: 13px;
+    font-style: italic;
 }
 .stats-header h1
 {

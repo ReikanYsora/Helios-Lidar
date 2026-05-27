@@ -96,7 +96,7 @@
         <div class="about-community-stat" id="about-community-downloads">
           <svg class="about-community-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/></svg>
           <div class="about-community-stat-body">
-            <span class="about-community-number" data-stat="downloads">,</span>
+            <span class="about-community-number" data-stat="downloads">—</span>
             <span class="about-community-label" data-i18n="communityDownloads" data-stat-label="downloads-label">
               downloads of the latest Helios card release
             </span>
@@ -105,7 +105,7 @@
         <div class="about-community-stat" id="about-community-conversions">
           <svg class="about-community-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15 6.7"/><path d="M3 12a9 9 0 0 1 15-6.7"/><path d="M21 3v5h-5"/><path d="M3 21v-5h5"/></g></svg>
           <div class="about-community-stat-body">
-            <span class="about-community-number" data-stat="conversions">,</span>
+            <span class="about-community-number" data-stat="conversions">—</span>
             <span class="about-community-label" data-i18n="communityConversions">
               LiDAR conversions processed through this pipeline
             </span>
@@ -125,6 +125,37 @@
           <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open Helios in your Home Assistant via HACS">
         </a>
       </div>
+    </section>
+
+    <!--  Press / external coverage. Manually curated list of
+          articles, videos and community posts that cover Helios.
+          Lives between the About-the-card section and the
+          primer so a first-time visitor sees the third-party
+          social proof right after the live demo and before the
+          technical first-time-here block.                       -->
+    <section class="card" id="press-section">
+      <h2 data-i18n="pressH2">Articles et retours de la communauté</h2>
+      <p class="section-lead" data-i18n="pressLead">
+        Articles, vidéos et retours de la communauté qui couvrent Helios.
+      </p>
+      <ul class="press-list">
+        <li class="press-item">
+          <a class="press-link"
+             href="https://www.antoineguilbert.fr/helios-home-assistant-carte-3d-avec-lidar/"
+             target="_blank" rel="noopener">
+            <h3 class="press-title">Helios : la carte Lovelace 3D et LiDAR pour Home Assistant</h3>
+            <div class="press-meta">
+              <span class="press-source">antoineguilbert.fr</span>
+              <span class="press-date">27 mai 2026</span>
+            </div>
+            <p class="press-quote">
+              «&nbsp;Helios est le genre de carte qu'on partage volontiers parce qu'elle répond
+              à un vrai besoin : comprendre ce qui se passe au-dessus de sa maison, pas juste
+              surveiller un compteur.&nbsp;»
+            </p>
+          </a>
+        </li>
+      </ul>
     </section>
 
     <section class="card" id="primer-section">
@@ -381,12 +412,12 @@
         <a class="gh-star-btn" href="https://github.com/ReikanYsora/Helios" target="_blank" rel="noopener" data-gh-repo="ReikanYsora/Helios" aria-label="Star Helios on GitHub">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
           <span class="gh-star-name">Helios</span>
-          <span class="gh-star-count" data-loading="true">,</span>
+          <span class="gh-star-count" data-loading="true">—</span>
         </a>
         <a class="gh-star-btn" href="https://github.com/ReikanYsora/Helios-Lidar" target="_blank" rel="noopener" data-gh-repo="ReikanYsora/Helios-Lidar" aria-label="Star Helios-Lidar on GitHub">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
           <span class="gh-star-name">Helios-Lidar</span>
-          <span class="gh-star-count" data-loading="true">,</span>
+          <span class="gh-star-count" data-loading="true">—</span>
         </a>
       </div>
       <p class="credits" data-i18n="credits">

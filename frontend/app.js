@@ -602,7 +602,7 @@ async function loadCommunityStats()
 {
     const fmt = (n) =>
     {
-        if (!Number.isFinite(n)) return ',';
+        if (!Number.isFinite(n)) return '—';
         try { return n.toLocaleString(); }
         catch (_) { return String(n); }
     };

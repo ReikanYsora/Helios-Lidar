@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Helios Analytics</title>
   <link rel="icon" type="image/png" href="/static/helios-icon.png">
-  <link rel="stylesheet" href="/static/style.css?v=20260525g">
+  <link rel="stylesheet" href="/static/style.css?v=20260527a">
 </head>
 <body>
   <div class="bg-blur bg-blur--left"  aria-hidden="true"></div>
@@ -34,26 +34,37 @@
       </div>
     </header>
 
-    <div class="stats-main">
+    <div class="stats-main is-loading">
     <header class="stats-header">
       <h1>Helios Analytics</h1>
     </header>
 
+    <!--  Loading curtain. Visible while .stats-main carries
+          .is-loading (default state served by the HTML, dropped
+          by stats.js on the first successful /api/stats fetch).
+          During this window the scaffolded charts + KPI cards
+          stay hidden so a non-authenticated visitor doesn't see
+          a list of empty section titles.                         -->
+    <div class="stats-loading-curtain">
+      <div class="stats-loading-spinner" aria-hidden="true"></div>
+      <p class="stats-loading-text">Checking access and loading stats…</p>
+    </div>
+
     <section class="stats-kpis">
       <div class="kpi-card">
-        <div class="kpi-value" data-kpi="total_visits_24h">,</div>
+        <div class="kpi-value" data-kpi="total_visits_24h">—</div>
         <div class="kpi-label">visits, last 24 h</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value" data-kpi="unique_visitors_24h">,</div>
+        <div class="kpi-value" data-kpi="unique_visitors_24h">—</div>
         <div class="kpi-label">unique IPs, last 24 h</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value" data-kpi="conversions_24h">,</div>
+        <div class="kpi-value" data-kpi="conversions_24h">—</div>
         <div class="kpi-label">conversions, last 24 h</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value" data-kpi="downloads_24h">,</div>
+        <div class="kpi-value" data-kpi="downloads_24h">—</div>
         <div class="kpi-label">card downloads, last 24 h</div>
       </div>
     </section>
@@ -67,9 +78,9 @@
       <header class="histogram-header">
         <h2>Application growth index</h2>
         <div id="growth-kpis" class="growth-kpis" aria-live="polite">
-          <span class="growth-kpi" id="growth-kpi-wow">WoW ,</span>
-          <span class="growth-kpi" id="growth-kpi-mom">MoM ,</span>
-          <span class="growth-kpi" id="growth-kpi-slope">Slope ,</span>
+          <span class="growth-kpi" id="growth-kpi-wow">WoW —</span>
+          <span class="growth-kpi" id="growth-kpi-mom">MoM —</span>
+          <span class="growth-kpi" id="growth-kpi-slope">Slope —</span>
         </div>
       </header>
       <div class="chart-wrap chart-wrap--wide">
@@ -252,7 +263,7 @@
 
     <footer class="stats-footer">
       <a href="/">&larr; Back to Helios-Lidar</a>
-      <span class="stats-refresh">Last refresh: <span id="stats-fetched-at">,</span></span>
+      <span class="stats-refresh">Last refresh: <span id="stats-fetched-at">—</span></span>
     </footer>
     </div>
   </main>

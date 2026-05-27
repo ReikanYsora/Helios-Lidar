@@ -13,6 +13,12 @@
 //empty without a clue).
 function showFetchError(detail)
 {
+    //Drop the loading curtain so the error is actually visible:
+    //while .is-loading is set, every descendant except the
+    //header + the curtain itself is display:none, including any
+    //error chip we'd insert. Removing the class reveals the
+    //empty scaffold, but that's better than no feedback at all.
+    document.querySelector('.stats-main')?.classList.remove('is-loading');
     let el = document.getElementById('stats-fetch-error');
     if (!el)
     {
@@ -27,7 +33,7 @@ function showFetchError(detail)
 
 const KPI_FMT = (n) =>
 {
-    if (!Number.isFinite(n)) return ',';
+    if (!Number.isFinite(n)) return '—';
     try { return n.toLocaleString(); }
     catch (_) { return String(n); }
 };
@@ -407,7 +413,7 @@ function renderGrowthIndex(canvasId, payload)
     opts.plugins.tooltip.callbacks.label = (item) =>
     {
         const v = item.parsed.y;
-        return `${item.dataset.label}: ${v == null ? ',' : Math.round(v).toLocaleString()}`;
+        return `${item.dataset.label}: ${v == null ? '—' : Math.round(v).toLocaleString()}`;
     };
     return new Chart(ctx, {
         type: 'line',
@@ -443,7 +449,7 @@ function renderGrowthKpis(payload)
 {
     const fmtPct = (v) =>
     {
-        if (v == null || !Number.isFinite(v)) return ',';
+        if (v == null || !Number.isFinite(v)) return '—';
         return (v > 0 ? '+' : '') + v.toFixed(1) + '%';
     };
     const setKpi = (id, prefix, value, isPctOrSlope) =>
@@ -451,7 +457,7 @@ function renderGrowthKpis(payload)
         const el = document.getElementById(id);
         if (!el) return;
         const num = (typeof value === 'number') ? value : null;
-        el.textContent = `${prefix} ${isPctOrSlope === 'pct' ? fmtPct(num) : (num == null ? ',' : (num > 0 ? '+' : '') + num.toFixed(1))}`;
+        el.textContent = `${prefix} ${isPctOrSlope === 'pct' ? fmtPct(num) : (num == null ? '—' : (num > 0 ? '+' : '') + num.toFixed(1))}`;
         el.classList.toggle('is-up',   num != null && num > 0);
         el.classList.toggle('is-down', num != null && num < 0);
     };
@@ -626,6 +632,14 @@ async function loadStats()
         snapshot = await resp.json();
     }
     catch (err) { showFetchError(err && err.message || err); return; }
+
+    //First successful fetch: reveal the dashboard. Until this
+    //point .stats-main carries .is-loading via the inline gate
+    //in stats.html, which hides the entire chart / KPI grid so
+    //a non-authenticated visitor (or a user during the brief
+    //auth-and-fetch window) doesn't see the empty scaffold of
+    //section titles + placeholder KPIs.
+    document.querySelector('.stats-main')?.classList.remove('is-loading');
 
     document.querySelectorAll('[data-kpi]').forEach((el) =>
     {
