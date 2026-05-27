@@ -41,10 +41,6 @@ const PROVIDERS = [
     { id: 'ca',           name: 'Canada , HRDEM',                                     minLat: 41.5,  maxLat: 84.0,  minLon: -141.5,  maxLon: -52.0,  firstStableVersion: '1.6.x' },
     { id: 'us-vt',        name: 'United States , Vermont VCGI nDSM',                  minLat: 42.65, maxLat: 45.10, minLon: -73.50,  maxLon: -71.40, firstStableVersion: '1.6.x' },
     { id: 'de-bb-be',     name: 'Germany , Brandenburg + Berlin DOM',                 minLat: 51.36, maxLat: 53.56, minLon: 11.27,   maxLon: 14.77,  firstStableVersion: '1.6.x' },
-    { id: 'at-tirol',     name: 'Austria , Tirol ALS',                                minLat: 46.65, maxLat: 47.75, minLon: 10.05,   maxLon: 12.95,  firstStableVersion: '1.7.x' },
-    { id: 'at-stmk',      name: 'Austria , Steiermark ALSHöheninformation',           minLat: 46.55, maxLat: 47.85, minLon: 13.50,   maxLon: 16.20,  firstStableVersion: '1.7.x' },
-    { id: 'de-bw',        name: 'Germany , Baden-Württemberg LGL DOM5 + DGM1',         minLat: 47.50, maxLat: 49.85, minLon: 7.45,    maxLon: 10.55,  firstStableVersion: '1.7.x' },
-    { id: 'be-fl',        name: 'Belgium , Flanders DHMVII',                          minLat: 50.65, maxLat: 51.55, minLon: 2.50,    maxLon: 5.95,   firstStableVersion: '1.7.x' },
 ];
 
 //Initial demo home: Montpellier France, same point the index demo
@@ -251,7 +247,6 @@ async function bootstrap()
         return {
             '1.5.x': readCssVar('--cov-v15'),
             '1.6.x': readCssVar('--cov-v16'),
-            '1.7.x': readCssVar('--cov-v17'),
         };
     }
     const rectangles = [];
