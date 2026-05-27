@@ -90,15 +90,24 @@ class HeliosShimHaIcon extends HTMLElement
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                width:  var(--mdc-icon-size, 24px);
-                height: var(--mdc-icon-size, 24px);
+                width:      var(--mdc-icon-size, 24px);
+                height:     var(--mdc-icon-size, 24px);
+                /*  iconify-icon@2 sizes its inner SVG off the
+                    computed font-size, not CSS width/height. Force
+                    font-size to match --mdc-icon-size so the SVG
+                    fills the host box instead of falling back to
+                    the inherited body font-size (typically 14 px
+                    on Helios-Lidar, which shrinks the icon to
+                    ~60 % of the host's reserved square).            */
+                font-size:  var(--mdc-icon-size, 24px);
+                line-height: 1;
                 color: inherit;
                 vertical-align: middle;
                 flex-shrink: 0;
             }
             iconify-icon {
-                width:  100%;
-                height: 100%;
+                width:  1em;
+                height: 1em;
                 color: inherit;
                 display: block;
             }
