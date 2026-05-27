@@ -280,19 +280,19 @@ header h1
 {
     position: relative;
     z-index: 1;
-    /*  The brand image is a 1:1 square (helios_favicon.png, 512 x 512)
-        so filling the 132 px banner height would produce a 132 px square,
-        too dominant for a header glyph. Cap at 88 px with ~22 px of
-        breathing room top + bottom, the sun-on-HA disc reads as a clear
-        brand mark without crowding the tagline strip below.            */
-    height: 88px;
-    width: 88px;
+    /*  Square 1:1 brand mark (helios_favicon.png, 512 x 512). Sized to
+        110 px so the sun-on-HA disc reads as a confident brand mark in
+        the 132 px banner without spilling into the tagline strip below.
+        Phone breakpoint drops to 92 px to keep the banner proportional
+        on a narrow viewport.                                          */
+    height: 110px;
+    width: 110px;
     max-width: 100%;
     display: block;
 }
 @media (max-width: 560px)
 {
-    .brand-icon { height: 72px; width: 72px; }
+    .brand-icon { height: 92px; width: 92px; }
 }
 
 /*  The icon is wrapped in an anchor on every page so a click on
@@ -1217,7 +1217,9 @@ button
     stack doesn't get squashed on narrow viewports.                */
 .about-demo-wrap
 {
-    margin: 16px 0 12px;
+    /*  Top margin balances the bottom space (card padding 24 + community margin-bottom 4 = 28 px below the stats row). 4 px on top of the
+        .card's 24 px padding gives the same 28 px gap above the demo card, the legacy 16 px was sized to clear the now-removed theme toggle. */
+    margin: 4px 0 12px;
     border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
