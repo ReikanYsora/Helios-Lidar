@@ -177,10 +177,24 @@ function buildMockHass(initialLang)
 //changes from its language switcher to the embedded card. The
 //handle's setLanguage is a no-op until the bundle finishes
 //loading; calls made earlier are coalesced into the initial mount.
-export function mountHeliosDemo({ hostEl, initialLang, initialTheme })
+export function mountHeliosDemo({ hostEl, initialLang, initialTheme, initialHome })
 {
     refreshSyntheticState();
     const mockHass = buildMockHass(initialLang || 'en');
+    //Optional caller-supplied home override. When present, replaces
+    //the DEMO_HOME defaults in mockHass.config so the boot location
+    //is whatever the host page wants. The coverage browser uses this
+    //to drop the card on the user's clicked point straight away
+    //instead of teleporting after the first re-render.
+    if (initialHome
+        && typeof initialHome.lat === 'number'
+        && typeof initialHome.lon === 'number'
+        && Number.isFinite(initialHome.lat)
+        && Number.isFinite(initialHome.lon))
+    {
+        mockHass.config.latitude  = initialHome.lat;
+        mockHass.config.longitude = initialHome.lon;
+    }
     let card = null;
     let pendingLang  = mockHass.language;
     let pendingTheme = (initialTheme === 'light' || initialTheme === 'dark') ? initialTheme : 'dark';
@@ -225,6 +239,25 @@ export function mountHeliosDemo({ hostEl, initialLang, initialTheme })
             if (card)
             {
                 card.setConfig({ ...cfg });
+                card.hass = { ...mockHass, states: currentStates() };
+            }
+        },
+        //Move the embedded card to a new home position. Mutates
+        //mockHass.config.{latitude,longitude} and reassigns hass so
+        //the card's `updated()` sees a new identity key and re-inits
+        //the MapLibre engine against the new coords. Bounds + sanity
+        //gates here avoid the engine misfiring on edge cases (NaN
+        //from a bad caller, polar extremes Helios is not tuned for).
+        setLocation({ lat, lon })
+        {
+            if (typeof lat !== 'number' || typeof lon !== 'number') return;
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+            if (lat < -85 || lat > 85) return;
+            if (lon < -180 || lon > 180) return;
+            mockHass.config.latitude  = lat;
+            mockHass.config.longitude = lon;
+            if (card)
+            {
                 card.hass = { ...mockHass, states: currentStates() };
             }
         },

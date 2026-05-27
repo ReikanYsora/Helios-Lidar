@@ -37,6 +37,14 @@
     --lang-strip-bg:     #f4f5f7;
     --lang-strip-border: #d8dadd;
     --lang-strip-ink:    #51565d;
+    /*  Coverage map version colour ramp. Three distinct hues so
+        rectangles of different vintages stay legible when they
+        sit side-by-side, the orange anchors the brand identity
+        while the older tiers fall back to cooler colours so the
+        eye reads "most recent = warmest".                        */
+    --cov-v15:           #6b9fef;
+    --cov-v16:           #22c55e;
+    --cov-v17:           #f5a623;
 }
 
 /*  Light theme: mirrors the dark palette with surfaces pulled to
@@ -71,6 +79,9 @@ html[data-theme="light"]
     --lang-strip-bg:     #ffffff;
     --lang-strip-border: #d8dadd;
     --lang-strip-ink:    #51565d;
+    --cov-v15:           #4585d4;
+    --cov-v16:           #1f9d4a;
+    --cov-v17:           #d68812;
 }
 
 *
@@ -2429,5 +2440,176 @@ code
     .about-link-row
     {
         text-align: center;
+    }
+}
+
+
+/*  -----------------------------------------------------------------
+    Coverage page (coverage.html), interactive world map of native
+    LiDAR providers + embedded Helios demo card that re-anchors when
+    the user clicks a point.
+    ----------------------------------------------------------------- */
+
+#coverage-section
+{
+    padding: 22px;
+}
+
+.coverage-layout
+{
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 22px;
+    align-items: stretch;
+}
+
+.coverage-map-col,
+.coverage-card-col
+{
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+}
+
+.coverage-map
+{
+    width:  100%;
+    height: 480px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    overflow: hidden;
+}
+
+/*  Leaflet tooltip restyle so it matches the dark/light theme of
+    the site. Default white-on-black tooltip looks foreign next to
+    the orange-accent chrome.                                       */
+.coverage-tt
+{
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.coverage-tt::before
+{
+    border-top-color: var(--surface) !important;
+}
+.coverage-tt-version
+{
+    color: var(--ink-soft);
+    font-size: 11px;
+}
+
+.coverage-legend
+{
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.coverage-legend h3
+{
+    margin: 0 0 8px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+.coverage-legend-list
+{
+    list-style: none;
+    margin: 0 0 10px;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+.coverage-legend-list li
+{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.coverage-legend-swatch
+{
+    display: inline-block;
+    width:  14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--border-soft);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.coverage-legend-tip
+{
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 12px;
+}
+
+.coverage-card-host
+{
+    flex: 1 1 auto;
+    min-height: 480px;
+    display: flex;
+}
+.coverage-card-host helios-card
+{
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+}
+
+.coverage-card-footer
+{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--ink-soft);
+}
+.coverage-current-loc
+{
+    flex: 1 1 auto;
+    min-width: 0;
+    font-variant-numeric: tabular-nums;
+}
+.coverage-back-link
+{
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px dashed transparent;
+    transition: border-color 0.15s ease;
+}
+.coverage-back-link:hover,
+.coverage-back-link:focus-visible
+{
+    border-bottom-color: var(--accent);
+    outline: none;
+}
+
+@media (max-width: 960px)
+{
+    .coverage-layout
+    {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .coverage-map
+    {
+        height: 360px;
+    }
+    .coverage-card-host
+    {
+        min-height: 420px;
     }
 }

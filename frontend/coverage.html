@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Helios , native LiDAR coverage</title>
+  <meta name="description" content="Check whether your home is inside one of the regions where the Helios Home Assistant card uses native LiDAR shadows. Click anywhere on the world map and the embedded demo card jumps to that point so you can see the result instantly.">
+  <meta name="keywords" content="Helios, Home Assistant, LiDAR, coverage map, OpenFreeMap, MapLibre, shadows">
+  <meta name="author" content="Jérôme Cremoux">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://helios-lidar.org/coverage">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Helios">
+  <meta property="og:title" content="Helios , native LiDAR coverage map">
+  <meta property="og:description" content="An interactive world map of the regions where Helios paints shadows from real LiDAR data, click anywhere to test your home.">
+  <meta property="og:url" content="https://helios-lidar.org/coverage">
+  <meta property="og:image" content="https://helios-lidar.org/static/helios-icon.png">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Helios , native LiDAR coverage map">
+  <meta name="twitter:description" content="Click anywhere on the world map to test whether the Helios card has native LiDAR shadows at that location.">
+  <meta name="twitter:image" content="https://helios-lidar.org/static/helios-icon.png">
+
+  <link rel="icon" type="image/png" href="/static/helios-icon.png">
+  <link rel="stylesheet" href="/static/style.css">
+
+  <!--  Leaflet 1.9.4: small (145 kB) interactive world map. Used here
+        for the coverage browser, the embedded Helios demo card below
+        carries its own MapLibre instance for the 3D home view.        -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+</head>
+<body>
+  <div class="bg-blur bg-blur--left"  aria-hidden="true"></div>
+  <div class="bg-blur bg-blur--right" aria-hidden="true"></div>
+  <div class="lang-strip">
+    <div class="lang-strip-left">
+      <a class="repo-link" href="https://github.com/ReikanYsora/Helios" target="_blank" rel="noopener" aria-label="Helios GitHub repository">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+      </a>
+      <span class="site-version" aria-label="Site version">v1.6.4</span>
+    </div>
+    <div class="lang-switcher" id="lang-switcher" aria-label="Language"></div>
+  </div>
+  <main>
+    <header>
+      <div class="brand-banner">
+        <a href="/" aria-label="Helios-Lidar home">
+          <img src="/static/helios-icon.png" alt="Helios" class="brand-icon">
+        </a>
+      </div>
+      <div class="brand-strip">
+        <span class="brand-strip-text" data-i18n="brandStrip">
+          A 3D solar card for
+          <a href="https://www.home-assistant.io/" target="_blank" rel="noopener">Home Assistant</a>, and the tool that feeds it your LiDAR data
+        </span>
+      </div>
+      <h1 data-i18n="coverageH1">Native LiDAR coverage</h1>
+      <p class="lede" data-i18n="coverageLede">
+        The Helios card ships native LiDAR support for a growing list of countries and regions, so users in those areas get real shadows from buildings and trees without uploading anything. Click anywhere on the map below to test a location, the embedded demo card jumps to that point and renders what your home would look like.
+      </p>
+    </header>
+
+    <section class="card" id="coverage-section">
+      <div class="coverage-layout">
+        <div class="coverage-map-col">
+          <div id="coverage-map" class="coverage-map" aria-label="Interactive world map of Helios native LiDAR coverage"></div>
+          <div class="coverage-legend" aria-label="Map legend">
+            <h3 data-i18n="coverageLegendH3">Color = Helios release that introduced the provider</h3>
+            <ul class="coverage-legend-list">
+              <li>
+                <span class="coverage-legend-swatch" style="background: var(--cov-v15);"></span>
+                <span><strong>v1.5.x</strong></span>
+              </li>
+              <li>
+                <span class="coverage-legend-swatch" style="background: var(--cov-v16);"></span>
+                <span><strong>v1.6.0</strong></span>
+              </li>
+              <li>
+                <span class="coverage-legend-swatch" style="background: var(--cov-v17);"></span>
+                <span><strong>v1.7.0</strong></span>
+              </li>
+            </ul>
+            <p class="coverage-legend-tip" data-i18n="coverageLegendTip">
+              Hover any rectangle for the provider's name. Click anywhere on the map to drop the demo card on that point, inside a rectangle you get native LiDAR shadows, outside you get OpenFreeMap building footprints only.
+            </p>
+          </div>
+        </div>
+        <div class="coverage-card-col">
+          <div id="coverage-card-host" class="coverage-card-host" aria-label="Live demo of the Helios card at the selected location"></div>
+          <div class="coverage-card-footer">
+            <span class="coverage-current-loc" id="coverage-current-loc" aria-live="polite"></span>
+            <a class="coverage-back-link" href="/" data-i18n="coverageBackLink">&larr; Back to LiDAR conversion</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer-glow">
+    <div class="footer-inner">
+      <a class="footer-link" href="https://github.com/ReikanYsora/Helios-Lidar" target="_blank" rel="noopener">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+        <span data-i18n="footerSource">Helios-Lidar</span>
+      </a>
+      <span class="sep">&mdash;</span>
+      <a class="footer-link" href="https://github.com/ReikanYsora/Helios" target="_blank" rel="noopener">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+        <span data-i18n="footerHeliosCard">Helios card</span>
+      </a>
+      <span class="sep">&mdash;</span>
+      <a class="footer-link" href="mailto:jcremoux@gmail.com">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 5h18a1 1 0 0 1 1 1v.4l-10 6.1L2 6.4V6a1 1 0 0 1 1-1zm19 4.3V18a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V9.3l9.5 5.8a1 1 0 0 0 1 0L22 9.3z"/></svg>
+        <span data-i18n="contactMe">Contact me</span>
+      </a>
+      <span class="sep">&mdash;</span>
+      <a class="footer-link" href="https://fr.linkedin.com/in/jerome-cremoux" target="_blank" rel="noopener">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.5 2h-17A1.5 1.5 0 0 0 2 3.5v17A1.5 1.5 0 0 0 3.5 22h17a1.5 1.5 0 0 0 1.5-1.5v-17A1.5 1.5 0 0 0 20.5 2zM8 19H5V9h3v10zM6.5 7.7A1.7 1.7 0 1 1 8.2 6a1.7 1.7 0 0 1-1.7 1.7zM19 19h-3v-5c0-1.4-.5-2.4-1.7-2.4a1.8 1.8 0 0 0-1.7 1.2 2.4 2.4 0 0 0-.1.8V19h-3V9h3v1.3a3 3 0 0 1 2.7-1.5c2 0 3.5 1.3 3.5 4.1V19z"/></svg>
+        <span>LinkedIn</span>
+      </a>
+      <span class="sep">&mdash;</span>
+      <a class="footer-link" href="/privacy">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2 4 5v6.5c0 4.8 3.4 9.2 8 10.5 4.6-1.3 8-5.7 8-10.5V5l-8-3zm-1 14-4-4 1.4-1.4 2.6 2.6 5.6-5.6L18 9l-7 7z"/></svg>
+        <span data-i18n="footerPrivacy">Privacy</span>
+      </a>
+      <span class="sep">&mdash;</span>
+      <a class="footer-link" href="/stats">
+        <svg class="footer-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 21h18v2H3v-2zm2-8h3v6H5v-6zm5-5h3v11h-3V8zm5-4h3v15h-3V4zm5 8h3v7h-3v-7z"/></svg>
+        <span data-i18n="footerStats">Stats</span>
+      </a>
+      <div class="bmc-row">
+        <a href="https://www.buymeacoffee.com/reikanysora" target="_blank" rel="noopener">
+          <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Donate-orange?style=flat-square&logo=buy-me-a-coffee" alt="Buy Me a Coffee">
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="/static/bg-pointcloud.js"></script>
+  <script type="module" src="/static/coverage.js"></script>
+</body>
+</html>

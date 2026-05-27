@@ -237,6 +237,18 @@ def privacy_page() -> FileResponse:
     )
 
 
+@app.get("/coverage")
+def coverage_page() -> FileResponse:
+    """Native LiDAR coverage browser. Linked from the primer
+    section on the homepage. Same no-cache hint as /privacy so
+    map data + i18n updates propagate without hard reloads."""
+    return FileResponse(
+        FRONTEND_DIR / "coverage.html",
+        media_type="text/html; charset=utf-8",
+        headers={"cache-control": "no-cache, must-revalidate"},
+    )
+
+
 @app.get("/stats", dependencies=[Depends(_check_stats_auth)])
 def stats_page() -> FileResponse:
     """Hidden visitor-analytics dashboard. Not linked from anywhere
