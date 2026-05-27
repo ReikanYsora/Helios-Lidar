@@ -696,7 +696,7 @@ function applySiteTheme(theme)
     if (heliosDemoHandle) heliosDemoHandle.setTheme(theme);
     //Sync the toggle's visual active state in case the call came
     //from somewhere other than a button click (e.g. initial load).
-    document.querySelectorAll('#about-theme-toggle .theme-btn').forEach((b) =>
+    document.querySelectorAll('#site-theme-toggle .theme-btn').forEach((b) =>
     {
         const isActive = (b.dataset.theme === theme);
         b.classList.toggle('is-active', isActive);
@@ -707,9 +707,9 @@ function applySiteTheme(theme)
 //Demo card theme toggle. Two-button pill below the embedded card;
 //each button delegates to applySiteTheme so the toggle drives the
 //whole site palette in one shot, not just the embedded demo.
-function wireDemoThemeToggle()
+function wireSiteThemeToggle()
 {
-    const toggle = document.getElementById('about-theme-toggle');
+    const toggle = document.getElementById('site-theme-toggle');
     if (!toggle) return;
     const buttons = Array.from(toggle.querySelectorAll('.theme-btn'));
     buttons.forEach((btn) =>
@@ -763,4 +763,4 @@ async function loadGitHubStars()
 //main script's module-load, no extra HTTP round-trip.
 loadCommunityStats();
 loadGitHubStars();
-wireDemoThemeToggle();
+wireSiteThemeToggle();

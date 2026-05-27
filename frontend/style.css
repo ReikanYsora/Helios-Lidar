@@ -324,42 +324,14 @@ header h1
     box-sizing: border-box;
 }
 
-/*  Left cluster in the lang-strip: GitHub repo link first, version
-    label next. The icon is a thin-outline GitHub mark sized to the
-    same height as the version label so the line reads as one row. */
+/*  Left cluster in the lang-strip: site-wide theme toggle (sun /
+    moon icons, no labels). Drives the <html data-theme> attribute
+    and forwards the change to the embedded demo card.              */
 .lang-strip-left
 {
     display: flex;
     align-items: center;
     gap: 10px;
-}
-.repo-link
-{
-    display: inline-flex;
-    align-items: center;
-    color: var(--lang-strip-ink);
-    transition: color 120ms ease, transform 120ms ease;
-}
-.repo-link:hover
-{
-    color: var(--accent);
-    transform: translateY(-1px);
-}
-.repo-link svg
-{
-    width: 18px;
-    height: 18px;
-    display: block;
-}
-.lang-strip-home
-{
-    color: var(--lang-strip-ink);
-    font-size: 12px;
-    text-decoration: none;
-}
-.lang-strip-home:hover
-{
-    color: var(--accent);
 }
 .donations-note
 {
@@ -369,12 +341,50 @@ header h1
     text-align: right;
 }
 
-.site-version
+/*  Site-wide theme toggle. Two pill segments, icon-only (sun + moon).
+    Small enough to fit the strip without crowding the language picker
+    on the right. .is-active picks the accent tint matching the brand
+    sun-orange the rest of the chrome uses for selection state.       */
+#site-theme-toggle
 {
-    font-size: 11px;
-    letter-spacing: 0.5px;
+    display: inline-flex;
+    border: 1px solid var(--lang-strip-border);
+    border-radius: 999px;
+    background: var(--surface);
+    overflow: hidden;
+}
+#site-theme-toggle .theme-btn
+{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: var(--lang-strip-ink);
-    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    cursor: pointer;
+    transition: color 120ms ease, background-color 120ms ease;
+}
+#site-theme-toggle .theme-btn svg
+{
+    width: 14px;
+    height: 14px;
+}
+#site-theme-toggle .theme-btn:hover
+{
+    color: var(--accent);
+}
+#site-theme-toggle .theme-btn.is-active
+{
+    background: var(--accent);
+    color: #ffffff;
+}
+#site-theme-toggle .theme-btn:focus-visible
+{
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
 }
 
 /*  Ambient LiDAR pointcloud + wireframe rendered by bg-pointcloud.js
@@ -1221,65 +1231,6 @@ button
 /*  Theme toggle for the live demo card above. Sits flush below
     the demo, a horizontal two-button pill so readers can flip the
     embedded card's theme in real time without scrolling away. */
-.about-theme-toggle
-{
-    display: flex;
-    justify-content: center;
-    gap: 0;
-    /*  Pulled tight against the section's top edge via a negative
-        margin so the toggle reads as part of the demo cluster
-        with the minimum breathing room above.                    */
-    margin: -8px auto 12px;
-    padding: 4px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    width: max-content;
-}
-.theme-btn
-{
-    appearance: none;
-    background: transparent;
-    border: 0;
-    color: var(--ink-soft);
-    /*  Fixed min-width keeps the two halves identical regardless
-        of the active locale's label length (Dark / Light vs.
-        Dunkel / Hell vs. Chiaro / Scuro etc.).                  */
-    min-width: 110px;
-    padding: 8px 18px;
-    font: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: 999px;
-    cursor: pointer;
-    text-align: center;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: background 120ms ease, color 120ms ease;
-}
-.theme-btn-icon
-{
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-}
-.theme-btn:hover
-{
-    color: var(--ink);
-}
-.theme-btn.is-active
-{
-    background: var(--accent);
-    color: #fff;
-}
-.theme-btn:focus-visible
-{
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-}
-
 /*  Community signals strip. Two public totals: latest-version
     Helios card downloads (with a hover tooltip listing the per-
     version split) + all-time pipeline conversions. Sits below
