@@ -280,10 +280,19 @@ header h1
 {
     position: relative;
     z-index: 1;
-    height: 100%;
-    width: auto;
+    /*  The brand image is a 1:1 square (helios_favicon.png, 512 x 512)
+        so filling the 132 px banner height would produce a 132 px square,
+        too dominant for a header glyph. Cap at 88 px with ~22 px of
+        breathing room top + bottom, the sun-on-HA disc reads as a clear
+        brand mark without crowding the tagline strip below.            */
+    height: 88px;
+    width: 88px;
     max-width: 100%;
     display: block;
+}
+@media (max-width: 560px)
+{
+    .brand-icon { height: 72px; width: 72px; }
 }
 
 /*  The icon is wrapped in an anchor on every page so a click on
@@ -1335,10 +1344,14 @@ button
     display: flex;
     justify-content: center;
     align-items: center;
-    /*  Tight symmetric vertical margins so the badge sits close
-        to both the stats card above and the section bottom edge
-        below, without floating in dead space.                   */
-    margin: 16px auto -8px;
+    /*  Standalone block now (the badge lives below the header lede,
+        outside any .card). Positive vertical margins both ways so it
+        breathes between the lede above and the about section below.
+        The previous negative bottom margin worked when the badge was
+        the last child of a .card and needed to pull up against the
+        section's padding, it would overflow into the next section in
+        the new standalone layout.                                    */
+    margin: 24px auto 24px;
     padding: 0;
 }
 .hass-open-btn
