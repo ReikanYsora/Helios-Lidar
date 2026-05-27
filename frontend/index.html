@@ -80,6 +80,22 @@
       </p>
     </header>
 
+    <!--  "Open in HACS" badge sitting outside any card, immediately
+          below the header lede so the primary install CTA is the
+          first actionable thing a visitor reaches after reading what
+          Helios is. Deep-link via my.home-assistant.io redirect,
+          lands users on their HA's HACS dialog with the Helios repo
+          pre-filled.                                                 -->
+    <div class="hass-cta-row">
+      <a class="hass-open-btn"
+         href="https://my.home-assistant.io/redirect/hacs_repository/?owner=ReikanYsora&amp;repository=Helios&amp;category=plugin"
+         target="_blank"
+         rel="noopener"
+         aria-label="Open the Helios repository in your Home Assistant's HACS">
+        <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open Helios in your Home Assistant via HACS">
+      </a>
+    </div>
+
     <section class="card" id="about-helios-section">
       <!--  Live demo of the real Helios card running against a
             mocked Home Assistant `hass` object. demo-mount.js
@@ -108,19 +124,6 @@
             </span>
           </div>
         </div>
-      </div>
-      <!--  "Open in HACS" badge at the very bottom of the section,
-            the primary install CTA. Deep-link via my.home-assistant.io
-            redirect, lands users on their HA's HACS dialog with the
-            Helios repo pre-filled.                                  -->
-      <div class="hass-cta-row">
-        <a class="hass-open-btn"
-           href="https://my.home-assistant.io/redirect/hacs_repository/?owner=ReikanYsora&amp;repository=Helios&amp;category=plugin"
-           target="_blank"
-           rel="noopener"
-           aria-label="Open the Helios repository in your Home Assistant's HACS">
-          <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open Helios in your Home Assistant via HACS">
-        </a>
       </div>
     </section>
 
@@ -403,6 +406,15 @@
             in a new tab where the visitor can hit the Star button
             one click in.                                          -->
       <div class="gh-stars-row" id="gh-stars-row">
+        <!--  Buy Me a Coffee CTA in front of the GitHub repo buttons.
+              Uses the same .gh-star-btn pill so the row reads as one
+              cohesive "support the project" cluster, no orange tint.
+              Solid coffee-mug glyph mirrors the visual weight of the
+              GitHub octocat next to it.                              -->
+        <a class="gh-star-btn" href="https://www.buymeacoffee.com/reikanysora" target="_blank" rel="noopener" aria-label="Buy me a coffee">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 4h13v8.5a4.5 4.5 0 0 1-4.5 4.5h-4a4.5 4.5 0 0 1-4.5-4.5V4zm13 2v5a3 3 0 0 0 3-3 3 3 0 0 0-3-3v1zM3 19h16v2H3v-2z"/></svg>
+          <span class="gh-star-name" data-i18n="bmcLabel">Buy me a coffee</span>
+        </a>
         <a class="gh-star-btn" href="https://github.com/ReikanYsora/Helios" target="_blank" rel="noopener" data-gh-repo="ReikanYsora/Helios" aria-label="Star Helios on GitHub">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
           <span class="gh-star-name">Helios</span>
@@ -412,14 +424,6 @@
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.33.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.37-5.27 5.65.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.55C20.21 21.38 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
           <span class="gh-star-name">Helios-Lidar</span>
           <span class="gh-star-count" data-loading="true">—</span>
-        </a>
-        <!--  Buy Me a Coffee CTA, styled to match the GitHub star
-              buttons so the row reads as a coherent "support the
-              project" cluster. Replaces the shields.io image badge
-              that used to sit in the footer.                       -->
-        <a class="gh-star-btn bmc-btn" href="https://www.buymeacoffee.com/reikanysora" target="_blank" rel="noopener" aria-label="Buy me a coffee">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M5 8h11a3 3 0 0 1 0 6h-1.07A5 5 0 0 1 10 18H8a5 5 0 0 1-5-5V8h2zm11 4a1 1 0 0 0 0-2h-1v2h1zM7 4a1 1 0 0 1 1 1v1H6V5a1 1 0 0 1 1-1zm4 0a1 1 0 0 1 1 1v1h-2V5a1 1 0 0 1 1-1zm-9 17h16v2H2v-2z"/></svg>
-          <span class="gh-star-name" data-i18n="bmcLabel">Buy me a coffee</span>
         </a>
       </div>
       <p class="credits" data-i18n="credits">
