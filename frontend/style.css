@@ -2479,6 +2479,13 @@ code
     border: 1px solid var(--border);
     background: var(--surface-2);
     overflow: hidden;
+    /*  Stacking-context isolation. Leaflet's internal panes use
+        z-indexes up to 800 (popups + tooltips) which would float
+        above the sticky lang-strip (z-index 30) as the user scrolls
+        the page if the map didn't carry its own stacking context.
+        `isolation: isolate` creates one without forcing a specific
+        z-index on this element.                                    */
+    isolation: isolate;
 }
 
 /*  Leaflet tooltip restyle so it matches the dark/light theme of

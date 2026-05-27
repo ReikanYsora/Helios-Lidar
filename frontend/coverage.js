@@ -29,15 +29,15 @@ const PROVIDERS = [
     { id: 'es',           name: 'Spain , PNOA LiDAR',                                 minLat: 35.8,  maxLat: 44.0,  minLon: -9.6,    maxLon: 4.4,    firstStableVersion: '1.5.x' },
     { id: 'nl',           name: 'Netherlands , PDOK AHN4',                            minLat: 50.7,  maxLat: 53.8,  minLon: 3.1,     maxLon: 7.3,    firstStableVersion: '1.5.x' },
     { id: 'no',           name: 'Norway , Kartverket NHM',                            minLat: 57.5,  maxLat: 81.0,  minLon: 4.0,     maxLon: 33.0,   firstStableVersion: '1.5.x' },
-    { id: 'de-nrw',       name: 'Germany , North Rhine-Westphalia nDOM',              minLat: 50.30, maxLat: 52.55, minLon: 5.85,    maxLon: 9.50,   firstStableVersion: '1.6.0' },
-    { id: 'pl',           name: 'Poland , GUGiK NMPT',                                minLat: 49.00, maxLat: 54.85, minLon: 14.10,   maxLon: 24.20,  firstStableVersion: '1.6.0' },
-    { id: 'ca',           name: 'Canada , HRDEM',                                     minLat: 41.5,  maxLat: 84.0,  minLon: -141.5,  maxLon: -52.0,  firstStableVersion: '1.6.0' },
-    { id: 'us-vt',        name: 'United States , Vermont VCGI nDSM',                  minLat: 42.65, maxLat: 45.10, minLon: -73.50,  maxLon: -71.40, firstStableVersion: '1.6.0' },
-    { id: 'de-bb-be',     name: 'Germany , Brandenburg + Berlin DOM',                 minLat: 51.36, maxLat: 53.56, minLon: 11.27,   maxLon: 14.77,  firstStableVersion: '1.6.0' },
-    { id: 'at-tirol',     name: 'Austria , Tirol ALS',                                minLat: 46.65, maxLat: 47.75, minLon: 10.05,   maxLon: 12.95,  firstStableVersion: '1.7.0' },
-    { id: 'at-stmk',      name: 'Austria , Steiermark ALSHöheninformation',           minLat: 46.55, maxLat: 47.85, minLon: 13.50,   maxLon: 16.20,  firstStableVersion: '1.7.0' },
-    { id: 'de-bw',        name: 'Germany , Baden-Württemberg LGL DOM5 + DGM1',         minLat: 47.50, maxLat: 49.85, minLon: 7.45,    maxLon: 10.55,  firstStableVersion: '1.7.0' },
-    { id: 'be-fl',        name: 'Belgium , Flanders DHMVII',                          minLat: 50.65, maxLat: 51.55, minLon: 2.50,    maxLon: 5.95,   firstStableVersion: '1.7.0' },
+    { id: 'de-nrw',       name: 'Germany , North Rhine-Westphalia nDOM',              minLat: 50.30, maxLat: 52.55, minLon: 5.85,    maxLon: 9.50,   firstStableVersion: '1.6.x' },
+    { id: 'pl',           name: 'Poland , GUGiK NMPT',                                minLat: 49.00, maxLat: 54.85, minLon: 14.10,   maxLon: 24.20,  firstStableVersion: '1.6.x' },
+    { id: 'ca',           name: 'Canada , HRDEM',                                     minLat: 41.5,  maxLat: 84.0,  minLon: -141.5,  maxLon: -52.0,  firstStableVersion: '1.6.x' },
+    { id: 'us-vt',        name: 'United States , Vermont VCGI nDSM',                  minLat: 42.65, maxLat: 45.10, minLon: -73.50,  maxLon: -71.40, firstStableVersion: '1.6.x' },
+    { id: 'de-bb-be',     name: 'Germany , Brandenburg + Berlin DOM',                 minLat: 51.36, maxLat: 53.56, minLon: 11.27,   maxLon: 14.77,  firstStableVersion: '1.6.x' },
+    { id: 'at-tirol',     name: 'Austria , Tirol ALS',                                minLat: 46.65, maxLat: 47.75, minLon: 10.05,   maxLon: 12.95,  firstStableVersion: '1.7.x' },
+    { id: 'at-stmk',      name: 'Austria , Steiermark ALSHöheninformation',           minLat: 46.55, maxLat: 47.85, minLon: 13.50,   maxLon: 16.20,  firstStableVersion: '1.7.x' },
+    { id: 'de-bw',        name: 'Germany , Baden-Württemberg LGL DOM5 + DGM1',         minLat: 47.50, maxLat: 49.85, minLon: 7.45,    maxLon: 10.55,  firstStableVersion: '1.7.x' },
+    { id: 'be-fl',        name: 'Belgium , Flanders DHMVII',                          minLat: 50.65, maxLat: 51.55, minLon: 2.50,    maxLon: 5.95,   firstStableVersion: '1.7.x' },
 ];
 
 //Initial demo home: Montpellier France, same point the index demo
@@ -149,37 +149,31 @@ async function bootstrap()
         worldCopyJump:      true,
         zoomControl:        true,
         minZoom:            1,
-        maxZoom:            10,
+        //Native OSM tiles top out at z19; Leaflet upscales the z19
+        //tile when the user zooms further, which keeps individual
+        //houses big enough on screen to click precisely (a single
+        //building at z21 is ~120 px wide on a Retina display).
+        maxZoom:            21,
         attributionControl: false,
     }).setView([45, 5], 3);
 
-    //Carto raster tile layers, one per theme. We keep both around
-    //and swap which is on the map when the site theme flips, so the
-    //basemap palette stays in sync with the surrounding chrome.
-    //Carto tiles are CDN-cached, free for moderate use, and visually
-    //match the OpenFreeMap positron style the Helios card uses.
-    const tileLight = L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-        { subdomains: 'abcd', maxZoom: 19, crossOrigin: true }
-    );
-    const tileDark = L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        { subdomains: 'abcd', maxZoom: 19, crossOrigin: true }
-    );
-    function applyTileTheme(t)
-    {
-        if (t === 'light')
+    //OpenStreetMap standard raster tiles. Shows building outlines from
+    //~z16 upwards which is exactly what we want for a "click your
+    //house" selector. Theme-independent (the OSM palette stays
+    //identical light and dark), so we only need one layer.
+    L.tileLayer(
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         {
-            if (map.hasLayer(tileDark))  map.removeLayer(tileDark);
-            if (!map.hasLayer(tileLight)) tileLight.addTo(map);
+            maxNativeZoom: 19,
+            maxZoom:       21,
+            crossOrigin:   true,
         }
-        else
-        {
-            if (map.hasLayer(tileLight)) map.removeLayer(tileLight);
-            if (!map.hasLayer(tileDark)) tileDark.addTo(map);
-        }
-    }
-    applyTileTheme(theme);
+    ).addTo(map);
+    //No-op when the site theme changes; the OSM basemap is monotonic
+    //across themes so no swap is needed. Kept as a named function so
+    //the MutationObserver below can still call something without a
+    //branch.
+    function applyTileTheme(_t) { /* OSM basemap is theme-neutral */ }
 
     //Draw one rectangle per provider. Colours come from CSS variables
     //so a theme flip recolours them via the MutationObserver below.
@@ -187,8 +181,8 @@ async function bootstrap()
     {
         return {
             '1.5.x': readCssVar('--cov-v15'),
-            '1.6.0': readCssVar('--cov-v16'),
-            '1.7.0': readCssVar('--cov-v17'),
+            '1.6.x': readCssVar('--cov-v16'),
+            '1.7.x': readCssVar('--cov-v17'),
         };
     }
     const rectangles = [];
