@@ -753,6 +753,79 @@ function renderGithubStarsChart()
 }
 
 
+//HACS PR queue position. Same range-tab UX as the github-stars
+//chart. Single descending line, the target value is 0 (PR reaches
+//the front of the queue). The samples come from a server-side
+//hourly background fetch persisted to disk, so the history survives
+//worker restarts.
+let _hacsPrPayload = { samples: [] };
+let _hacsPrRange = '30d';
+let _hacsPrChart = null;
+
+async function loadHacsPrStatus()
+{
+    try
+    {
+        const resp = await fetch('/api/hacs-pr-status', { credentials: 'same-origin' });
+        if (!resp.ok) return;
+        _hacsPrPayload = await resp.json();
+    }
+    catch (_) { return; }
+    //Header KPIs read from the freshest sample regardless of the
+    //visible range: "Current X PRs ahead" + "State open/merged/...".
+    const samples = _hacsPrPayload.samples || [];
+    const last = samples.length ? samples[samples.length - 1] : null;
+    const curEl = document.getElementById('hacs-pr-kpi-current');
+    const stateEl = document.getElementById('hacs-pr-kpi-state');
+    if (curEl) curEl.textContent = last ? `Current: ${last.ahead.toLocaleString()} ahead` : 'Current —';
+    if (stateEl) stateEl.textContent = last ? `State: ${last.pr_state}` : 'State —';
+    renderHacsPrChart();
+}
+
+function renderHacsPrChart()
+{
+    const ctx = document.getElementById('chart-histogram-hacs-pr');
+    if (!ctx) return;
+    if (_hacsPrChart) { _hacsPrChart.destroy(); _hacsPrChart = null; }
+    const RANGE_SEC = { '24h': 86400, '7d': 604800, '30d': 2592000, '1y': 31536000 }[_hacsPrRange] || 2592000;
+    const cutoff = Math.floor(Date.now() / 1000) - RANGE_SEC;
+    const samples = (_hacsPrPayload.samples || []).filter(s => s.ts >= cutoff);
+
+    //Hourly tick formatting for 24h, daily-ish for the wider ranges.
+    const labels = samples.map(s =>
+    {
+        const d = new Date(s.ts * 1000);
+        if (_hacsPrRange === '24h') return d.toISOString().slice(11, 16);
+        if (_hacsPrRange === '7d')  return `${d.toISOString().slice(5, 10)} ${d.toISOString().slice(11, 13)}h`;
+        return d.toISOString().slice(5, 10);
+    });
+    const data = samples.map(s => s.ahead);
+    const accent = readCssVar('--accent', '#f5a623');
+    const opts = lineOptions();
+    opts.plugins.tooltip.callbacks.label = (item) =>
+        `${item.parsed.y.toLocaleString()} PRs ahead`;
+    _hacsPrChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'PRs ahead',
+                    data,
+                    borderColor: accent,
+                    backgroundColor: accent + '33',
+                    borderWidth: 2,
+                    pointRadius: samples.length < 50 ? 3 : 0,
+                    tension: 0.20,
+                    fill: 'origin',
+                },
+            ],
+        },
+        options: opts,
+    });
+}
+
+
 async function loadStats()
 {
     try
@@ -796,6 +869,9 @@ async function loadStats()
     //lands. Failure here is silent: the rest of the dashboard stays
     //functional, the stars section just shows its placeholder.
     loadGithubStars();
+    //Same shape for the HACS queue chart. Drop this call + the
+    //section in stats.html the day the PR gets merged.
+    loadHacsPrStatus();
 
     const refreshEl = document.getElementById('stats-fetched-at');
     if (refreshEl && snapshot.fetched_at_unix)
@@ -805,6 +881,25 @@ async function loadStats()
         catch (_) { refreshEl.textContent = d.toISOString(); }
     }
 }
+
+//Special-case wiring for the HACS PR chart, same pattern as the
+//github-stars one below. Drop this block (and the section) the day
+//the PR gets merged.
+document.querySelectorAll('[data-hist="hacs-pr"] .hist-tab').forEach((tab) =>
+{
+    tab.addEventListener('click', () =>
+    {
+        const range = tab.dataset.range;
+        _hacsPrRange = range;
+        document.querySelectorAll('[data-hist="hacs-pr"] .hist-tab').forEach((t) =>
+        {
+            const isActive = t.dataset.range === range;
+            t.classList.toggle('is-active', isActive);
+            t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+        renderHacsPrChart();
+    });
+});
 
 //Special-case wiring for the GitHub stars section: not driven by the
 //`histograms` registry because its payload comes from a separate

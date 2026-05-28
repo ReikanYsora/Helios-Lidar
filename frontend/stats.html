@@ -100,6 +100,30 @@
       </div>
     </section>
 
+    <!--  HACS PR queue position: how many PRs sit ahead of the Helios
+          submission (hacs/default#7520). One sample per hour persisted
+          server-side. Single descending line, the goal is to watch the
+          number reach 0. Drop the whole section the day the PR gets
+          merged (also drop /api/hacs-pr-status + the sampler).        -->
+    <section class="card stats-histogram" data-hist="hacs-pr">
+      <header class="histogram-header">
+        <h2>HACS PR queue position</h2>
+        <div class="histogram-tabs" role="tablist" aria-label="Time range">
+          <button type="button" class="hist-tab"           data-range="24h" role="tab" aria-selected="false">24 h</button>
+          <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
+          <button type="button" class="hist-tab is-active" data-range="30d" role="tab" aria-selected="true">30 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
+        </div>
+        <div id="hacs-pr-kpis" class="growth-kpis" aria-live="polite">
+          <span class="growth-kpi" id="hacs-pr-kpi-current">Current —</span>
+          <span class="growth-kpi" id="hacs-pr-kpi-state">State —</span>
+        </div>
+      </header>
+      <div class="chart-wrap chart-wrap--wide">
+        <canvas id="chart-histogram-hacs-pr"></canvas>
+      </div>
+    </section>
+
     <!--  GitHub star history for the two tracked repos (Helios card
           + Helios-Lidar companion site). Two-line cumulative chart so
           the eye reads the growth slope, not the hourly star births.

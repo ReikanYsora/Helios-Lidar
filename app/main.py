@@ -31,7 +31,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from app import github_stars, helios_downloads, jobs as job_store, lidar_sources, server_stats, visitor_stats
+from app import github_stars, hacs_pr_status, helios_downloads, jobs as job_store, lidar_sources, server_stats, visitor_stats
 from app.config import settings
 from app.jobs import Job, JobStatus
 from app.stats import StatsStore
@@ -313,6 +313,26 @@ def api_github_stars() -> JSONResponse:
             ],
         },
         headers={"cache-control": "public, max-age=600"},
+    )
+
+
+@app.get("/api/hacs-pr-status", dependencies=[Depends(_check_stats_auth)])
+def api_hacs_pr_status() -> JSONResponse:
+    """Hourly samples of how many PRs sit ahead of the Helios HACS
+    submission (hacs/default#7520). Drives the queue-position chart on
+    the stats page. Drop this endpoint and the sampler the day the PR
+    gets merged."""
+    snap = hacs_pr_status.get_snapshot()
+    return JSONResponse(
+        content={
+            "fetched_at_unix": snap.fetched_at_unix,
+            "target_pr_number": snap.target_pr_number,
+            "samples": [
+                {"ts": s.ts_unix, "ahead": s.ahead, "pr_state": s.pr_state}
+                for s in snap.samples
+            ],
+        },
+        headers={"cache-control": "public, max-age=300"},
     )
 
 
@@ -759,3 +779,10 @@ def _sweeper_loop() -> None:
 
 _sweeper_thread = threading.Thread(target=_sweeper_loop, name="jobs-sweeper", daemon=True)
 _sweeper_thread.start()
+
+
+#HACS PR queue position sampler. Persists hourly samples to a JSONL
+#file under the stats dir so the chart history survives worker
+#restarts. Drop the import + this call the day hacs/default#7520
+#gets merged (or whenever you want to stop tracking).
+hacs_pr_status.start_sampler(settings.jobs_dir.parent / "stats" / "hacs_pr.jsonl")
