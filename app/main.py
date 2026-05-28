@@ -743,7 +743,7 @@ def _sweeper_loop() -> None:
     """
     #Immediate first pass on startup. Important on worker restart so
     #orphans from the previous lifecycle get cleaned even if the
-    //service runs continuously after that.
+    #service runs continuously after that.
     try:
         _sweep_stale_jobs()
     except Exception as exc:  # noqa: BLE001
