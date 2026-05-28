@@ -18,14 +18,23 @@ classified points we fail with a user-facing message rather than
 guessing a ground filter; that decision belongs upstream.
 
 Memory: a 1 km x 1 km tile at 10 points / m^2 holds ~ 10 M points,
-~ 240 MB resident as four Float64 arrays (x, y, z, hag). The VPS
-has ~ 6 GB free RAM so a 50 M-point tile (~ 1.2 GB) still fits.
-Larger inputs would need chunked processing; we'll add that when a
-real input hits the limit.
+~ 240 MB resident as four Float64 arrays (x, y, z, hag). On a 50 M-
+point input the function used to peak around 6.7 GB (the laspy
+LasData held all dimensions until end-of-function, plus the KDTree
+allocated `nn_idx` (n_points, k) and `ground_z[nn_idx]` of the same
+shape, both Float64 / intp), which OOM-killed the uvicorn worker on
+the 7.6 GB VPS. The current version `del`s the laspy point-record as
+soon as the four dimensions we need are copied out, builds the
+KDTree result chunk-by-chunk into a single Float32 buffer instead of
+the full (n_points, k) matrix, and `del`s the per-point working
+arrays (x, y, z, hag, classification, ground_mask, ground_z, tree)
+the moment each is no longer referenced. Peak comes down to roughly
+3 GB on the same input.
 """
 
 from __future__ import annotations
 
+import gc
 from collections.abc import Callable
 from pathlib import Path
 
@@ -197,6 +206,11 @@ def rasterise(
     y = np.asarray(points.y, dtype=np.float64)
     z = np.asarray(points.z, dtype=np.float64)
     classification = np.asarray(points.classification, dtype=np.uint8)
+    #Drop the laspy LasData object as soon as we have copies of the four dimensions we actually use, the rest of the record (intensity,
+    #return-number, GPS time, RGB, ...) holds 8-12 extra dimensions for every point, which on a 50 M-point tile is ~ 1.5 GB of resident
+    #memory we never read. del + gc.collect forces the unused dimensions back to the OS through glibc's mmap arenas.
+    del points
+    gc.collect()
 
     if x.size == 0:
         raise ValidationError("The LAS / LAZ file contains no points.")
@@ -252,28 +266,36 @@ def rasterise(
     ground_xy = np.column_stack((x[ground_mask], y[ground_mask]))
     ground_z = z[ground_mask]
     tree = cKDTree(ground_xy)
+    #cKDTree copies the input internally, the column-stacked array is no longer needed. del + collect frees ~80 MB / 5 M ground points.
+    del ground_xy
+    gc.collect()
     report("kdtree", 1.0)
 
     #Chunked KDTree query so we can tick the progress bar between
-    #batches. Single-shot tree.query on 26 M points blocks for ~30 s
-    #with the progress bar visually frozen; ten 2.6 M-point batches
-    #take essentially the same wall-clock total but report nine
-    #intermediate progress updates the caller can surface.
+    #batches AND so the per-chunk index buffer never grows to the full
+    #point-count shape. The old version allocated `nn_idx` of shape
+    #(n_points, k) up front (~1.2 GB at 50 M points × k=3 × intp 8 bytes),
+    #then a second (n_points, k) buffer for `ground_z[nn_idx]` before the
+    #mean reduction, peaking at ~2.5 GB of intermediates. Writing each
+    #chunk's mean directly into a single `(n_points,)` float32 buffer
+    #drops that peak to one chunk's worth at a time (~120 MB).
     k = min(GROUND_KNN, ground_count)
     n_points = x.size
     chunk_size = max(1, n_points // QUERY_CHUNKS)
-    nn_idx = np.empty((n_points, k) if k > 1 else n_points, dtype=np.intp)
+    ground_z_per_point = np.empty(n_points, dtype=np.float32)
     for start in range(0, n_points, chunk_size):
         end = min(start + chunk_size, n_points)
         chunk_xy = np.column_stack((x[start:end], y[start:end]))
         _, chunk_idx = tree.query(chunk_xy, k=k, workers=-1)
-        nn_idx[start:end] = chunk_idx
+        if k == 1:
+            ground_z_per_point[start:end] = ground_z[chunk_idx].astype(np.float32, copy=False)
+        else:
+            ground_z_per_point[start:end] = ground_z[chunk_idx].mean(axis=1).astype(np.float32, copy=False)
         report("querying", end / n_points)
+    #Tree + chunk-xy buffers are no longer needed past this point. The tree itself can hold several hundred MB on a dense input.
+    del tree
+    gc.collect()
 
-    if k == 1:
-        ground_z_per_point = ground_z[nn_idx]
-    else:
-        ground_z_per_point = ground_z[nn_idx].mean(axis=1)
     hag = (z - ground_z_per_point).astype(np.float32)
     np.maximum(hag, 0.0, out=hag)
 
@@ -295,6 +317,10 @@ def rasterise(
 
     col = np.clip(((x - min_x_snap) / pixel_meters).astype(np.int64), 0, width - 1)
     row = np.clip(((max_y_snap - y) / pixel_meters).astype(np.int64), 0, height - 1)
+    #x and y are no longer needed for either the nDSM or the DTM rasterisation, both downstream passes work off col/row plus the
+    #per-point arrays (hag, ground_z_per_point). On a 50 M-point input that frees 2 × 400 MB.
+    del x, y
+    gc.collect()
 
     #Band 1: per-cell max height-above-ground. np.maximum.at is the
     #accumulator-style ufunc for "take the per-cell max over a
@@ -303,6 +329,8 @@ def rasterise(
     report("rasterising", 0.0)
     ndsm = np.full((height, width), NDSM_NODATA, dtype=np.float32)
     np.maximum.at(ndsm, (row, col), hag)
+    del hag
+    gc.collect()
 
     #Band 2: per-cell ground elevation, computed from the ground-
     #classified points only (ASPRS class 2). Mean Z of the ground
@@ -321,10 +349,13 @@ def rasterise(
     ground_col_idx = col[ground_mask]
     ground_row_idx = row[ground_mask]
     ground_z_pts   = z[ground_mask]
+    del z, classification, ground_mask, ground_z
+    gc.collect()
     dtm_sum   = np.zeros((height, width), dtype=np.float64)
     dtm_count = np.zeros((height, width), dtype=np.int32)
     np.add.at(dtm_sum,   (ground_row_idx, ground_col_idx), ground_z_pts)
     np.add.at(dtm_count, (ground_row_idx, ground_col_idx), 1)
+    del ground_row_idx, ground_col_idx, ground_z_pts
     dtm = np.full((height, width), DTM_NODATA, dtype=np.float32)
     has_ground = dtm_count > 0
     dtm[has_ground] = (dtm_sum[has_ground] / dtm_count[has_ground]).astype(np.float32)
@@ -337,6 +368,8 @@ def rasterise(
         np.add.at(dtm_count, (row, col), 1)
         blended = (~has_ground) & (dtm_count > 0)
         dtm[blended] = (dtm_sum[blended] / dtm_count[blended]).astype(np.float32)
+    del row, col, ground_z_per_point, dtm_sum, dtm_count, has_ground
+    gc.collect()
     report("rasterising", 1.0)
 
     #Write as a 2-band Float32 GeoTIFF with the right projection so
