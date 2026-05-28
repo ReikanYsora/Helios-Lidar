@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HELIOS - Documentation Développeur</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --primary-color: #2563eb;
+            --secondary-color: #f3f4f6;
+            --border-color: #e5e7eb;
+            --code-bg: #f8fafc;
+            --quote-bg: #eff6ff;
+            --quote-border: #3b82f6;
+            --max-width: 850px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #0f172a;
+                --text-color: #e2e8f0;
+                --primary-color: #3b82f6;
+                --secondary-color: #1e293b;
+                --border-color: #334155;
+                --code-bg: #1e293b;
+                --quote-bg: #1e3a8a;
+                --quote-border: #2563eb;
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        h1, h2, h3, h4 {
+            color: var(--text-color);
+            font-weight: 700;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        h1 { font-size: 2.25rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; }
+        h2 { font-size: 1.75rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3rem; margin-top: 3rem; }
+        h3 { font-size: 1.35rem; }
+
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 3rem 0;
+        }
+
+        ul, ol {
+            padding-left: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background-color: var(--code-bg);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+            margin: 1.5rem 0;
+        }
+
+        pre code {
+            padding: 0;
+            background-color: transparent;
+            border-radius: 0;
+            font-size: 0.9rem;
+        }
+
+        blockquote {
+            background-color: var(--quote-bg);
+            border-left: 4px solid var(--quote-border);
+            margin: 1.5rem 0;
+            padding: 1rem;
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+
+        blockquote p {
+            margin: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.95rem;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--secondary-color);
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: var(--code-bg);
+        }
+
+        .sommaire {
+            background-color: var(--secondary-color);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin: 2rem 0;
+        }
+
+        .sommaire ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        .sommaire li {
+            margin-bottom: 0.4rem;
+        }
+        
+        .sommaire li ul {
+            padding-left: 1.5rem;
+            margin-top: 0.4rem;
+            list-style-type: disc;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>HELIOS , Documentation développeur</h1>
+
+    <p>Ce document explique en détail le fonctionnement interne de la carte Helios pour un développeur qui découvre le projet et souhaite contribuer. Il décrit ce que fait chaque sous-système, le raisonnement derrière les choix de conception, les formules mathématiques utilisées, les pièges connus, et comment ajouter un provider LiDAR, une clé de configuration ou une nouvelle langue.</p>
+
+    <p>Pour la documentation utilisateur, voir <a href="./README.md">README.md</a>. Pour le détail des releases, voir <a href="./CHANGELOG.md">CHANGELOG.md</a>. Pour la vue architecturale haute (concepts), voir <a href="./ARCHITECTURE.md">ARCHITECTURE.md</a>.</p>
+
+    <hr>
+
+    <div class="sommaire">
+        <h2>Sommaire</h2>
+        <ul>
+            <li>1. <a href="#1-vue-densemble">Vue d'ensemble</a></li>
+            <li>2. <a href="#2-architecture-générale">Architecture générale</a></li>
+            <li>3. <a href="#3-organisation-du-code">Organisation du code</a></li>
+            <li>4. <a href="#4-cycle-de-vie-dune-carte">Cycle de vie d'une carte</a></li>
+            <li>5. <a href="#5-le-moteur-helios-enginets">Le moteur (helios-engine.ts)</a></li>
+            <li>6. <a href="#6-le-rendu-helios-cardts--cardts">Le rendu (helios-card.ts + card/*.ts)</a></li>
+            <li>7. <a href="#7-sous-systèmes-du-moteur-enginets">Sous-systèmes du moteur (engine/*.ts)</a></li>
+            <li>8. <a href="#8-la-prédiction-pv--chaîne-de-calcul">La prédiction PV : chaîne de calcul</a></li>
+            <li>9. <a href="#9-le-système-lidar">Le système LiDAR</a></li>
+            <li>10. <a href="#10-les-couches-dapprentissage">Les couches d'apprentissage</a></li>
+            <li>11. <a href="#11-la-timeline-et-le-scrub-temporel">La timeline et le scrub temporel</a></li>
+            <li>12. <a href="#12-le-dashboard-mode-détail">Le dashboard (mode détail)</a></li>
+            <li>13. <a href="#13-les-modes-spéciaux-lidar-view-dôme">Les modes spéciaux (LiDAR-View, dôme)</a></li>
+            <li>14. <a href="#14-internationalisation-i18n">Internationalisation (i18n)</a></li>
+            <li>15. <a href="#15-configuration--éditeur-visuel">Configuration + éditeur visuel</a></li>
+            <li>16. <a href="#16-conventions-et-patterns">Conventions et patterns</a></li>
+            <li>17. <a href="#17-comment-contribuer">Comment contribuer</a></li>
+            <li>18. <a href="#18-pièges-connus">Pièges connus</a></li>
+        </ul>
+    </div>
+
+    <hr>
+
+    <h2 id="1-vue-densemble">1. Vue d'ensemble</h2>
+
+    <h3>1.1 Ce que fait Helios</h3>
+    <p>Helios est une carte personnalisée Lovelace pour Home Assistant qui visualise en temps réel les conditions solaires au domicile de l'utilisateur sur une carte 3D MapLibre. La carte agrège :</p>
+    <ul>
+        <li>L'arc solaire sur 24 h, le disque solaire et l'irradiance live</li>
+        <li>La couverture nuageuse (modèle Open-Meteo multi-source)</li>
+        <li>Les ombres portées au sol par les bâtiments ET la végétation (quand un provider LiDAR national couvre le domicile)</li>
+        <li>La production PV instantanée (capteur HA), avec une prédiction auto-corrigeante</li>
+        <li>L'état de la batterie domestique (capteurs HA multi-banks)</li>
+        <li>Une timeline scrubbable sur 5 jours (J-2 à J+2) qui pilote l'ensemble de la scène</li>
+    </ul>
+    <p>L'utilisateur ne fournit aucune clé d'API : la météo vient d'Open-Meteo, le fond de carte d'OpenFreeMap, les rasters LiDAR des programmes open-data nationaux.</p>
+
+    <h3>1.2 Philosophie de conception</h3>
+    <p>Quatre contraintes structurent l'ensemble du code :</p>
+    <ol>
+        <li><strong>Zéro friction utilisateur.</strong> Pas de configuration obligatoire, pas de clé d'API, pas de compte. Tout doit fonctionner avec un <code>type: custom:helios-card</code> sec dans le YAML.</li>
+        <li><strong>Transparence.</strong> Tout est calculé côté client dans le navigateur, l'utilisateur peut auditer chaque étape de la prédiction. Pas de black box serveur.</li>
+        <li><strong>Précision croissante via apprentissage local.</strong> Le modèle analytique fait office de baseline. Une calibration 5-jours (scalaire) puis une carte d'ombrage adaptative (par-cellule) apprennent les biais propres à l'install au fil des jours.</li>
+        <li><strong>Pas de dépendance commerciale.</strong> OpenFreeMap (vector tiles), Open-Meteo (météo), MapLibre (rendu), GeoTIFF.js (LiDAR) : tout est gratuit, sans rate limit, sans compte.</li>
+    </ol>
+
+    <hr>
+
+    <h2 id="2-architecture-générale">2. Architecture générale</h2>
+
+    <h3>2.1 Le split card / engine</h3>
+    <p>Le projet repose sur deux orchestrateurs top-level :</p>
+    <ul>
+        <li><strong><code>src/helios-card.ts</code></strong> : un <code>LitElement</code> qui gère le cycle de vie côté Home Assistant, écoute les changements de config et de <code>hass.states</code>, et oriente le rendu DOM / SVG. Il NE TOUCHE PAS à MapLibre directement.</li>
+        <li><strong><code>src/helios-engine.ts</code></strong> : une classe <code>HeliosEngine</code> qui possède l'instance MapLibre, les sources, les layers, les calculs de projection, les fetches LiDAR. Il NE CONNAÎT PAS Lit ni Home Assistant.</li>
+    </ul>
+    <p>L'interface entre les deux passe par des <strong>callbacks installés par la card sur l'engine</strong> (<code>engine.onShadowComputeStart = () => ...</code>, <code>engine.onMapTransform = () => ...</code>) et par des <strong>getters côté engine</strong> (<code>engine.projectHomeLabelLayout()</code>, <code>engine.getLidarRaster()</code>, etc.).</p>
+    <p>Pourquoi ce split : MapLibre + WebGL est lourd et stateful, son cycle de vie ne correspond pas à celui d'un élément Lit (qui peut être détaché / réattaché à n'importe quel moment par les layouts HA Masonry / Sections). La séparation permet à la card de mourir et ressusciter sans toucher à l'engine, et inversement.</p>
+
+    <h3>2.2 Le pattern "host structurel"</h3>
+    <p>Chaque sous-système dans <code>card/*.ts</code> ou <code>engine/*.ts</code> est une collection de <strong>fonctions libres</strong> qui prennent un <code>host</code> en paramètre. Le host est une interface TypeScript déclarée dans le fichier lui-même, qui décrit la surface dont la fonction a besoin sur l'objet appelant.</p>
+    <p>Exemple, depuis <code>src/card/battery.ts:32-45</code> :</p>
+    <pre><code class="language-ts">export interface BatteryHost
+{
+    readonly config:     HeliosConfig | undefined;
+    readonly hass:       any;
+    readonly _timeRange: { start: Date; end: Date } | null;
+
+    _batterySoc:          number | null;
+    _batteryPower:        number | null;
+    _batteryPowerUnit:    string;
+    _batterySocHistory:   BatteryHistory | null;
+    _batteryPowerHistory: BatteryHistory | null;
+    _batteryFetchKey:     string;
+    _batteryFetching:     boolean;
+}</code></pre>
+    <p><code>refreshBattery(host: BatteryHost): void</code> mute les champs <code>_battery*</code> du host directement. Lit voit les assignations grâce aux setters installés par <code>@state()</code> sur <code>helios-card.ts</code> et planifie un re-render automatiquement.</p>
+    <p>Avantages :</p>
+    <ul>
+        <li>Pas de service classes, pas de DI container</li>
+        <li>Chaque module reste testable isolément</li>
+        <li>Le typage TypeScript empêche un module de toucher à un champ qu'il n'a pas demandé</li>
+        <li>L'arborescence des dépendances est explicite</li>
+    </ul>
+
+    <h3>2.3 Stack technique</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Couche</th>
+                <th>Technologie</th>
+                <th>Rôle</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Élément web</td>
+                <td><a href="https://lit.dev/">Lit</a> 3</td>
+                <td>Réactivité, templates, web components</td>
+            </tr>
+            <tr>
+                <td>Rendu 3D</td>
+                <td><a href="https://maplibre.org/">MapLibre GL JS</a> 5</td>
+                <td>Carte 3D, custom layers WebGL</td>
+            </tr>
+            <tr>
+                <td>Fond de carte</td>
+                <td><a href="https://openfreemap.org/">OpenFreeMap</a></td>
+                <td>Vector tiles, schéma OpenMapTiles</td>
+            </tr>
+            <tr>
+                <td>LiDAR</td>
+                <td><a href="https://github.com/geotiffjs/geotiff.js">GeoTIFF.js</a></td>
+                <td>Décodage Float32 des rasters</td>
+            </tr>
+            <tr>
+                <td>Météo</td>
+                <td><a href="https://open-meteo.com/">Open-Meteo</a></td>
+                <td>Fetch multi-modèle, médiane</td>
+            </tr>
+            <tr>
+                <td>Bundler</td>
+                <td>Vite 5</td>
+                <td>Bundle unique <code>dist/helios.js</code></td>
+            </tr>
+            <tr>
+                <td>Build TS</td>
+                <td>TypeScript 5+</td>
+                <td><code>tsc --noEmit</code> pour le check</td>
+            </tr>
+        </tbody>
+    </table>
+    <p>Aucune dépendance ne nécessite de clé d'API ou de compte. Le bundle final fait ~2.9 MB (~675 KB gzippé) et inclut Lit + MapLibre + GeoTIFF.js + tout le code Helios.</p>
+
+    <hr>
+
+    <h2 id="3-organisation-du-code">3. Organisation du code</h2>
+
+    <h3>3.1 Arborescence</h3>
+    <pre><code>src/
+├── helios-card.ts          Lit element top-level, orchestrateur de rendu
+├── helios-engine.ts        Classe HeliosEngine, orchestrateur MapLibre
+├── helios-config.ts        Interface HeliosConfig + constantes DEFAULT_*
+├── vite-env.d.ts           Globals : __HELIOS_VERSION__ (inlined au build)
+├── card/                   Sous-systèmes pilotés par la card
+│   ├── pv.ts               PV : live state + history fetch + computeForecast
+│   ├── battery.ts          Batterie : multi-bank parser + agrégation
+│   ├── radiation.ts        Solar-radiation-entity : bridge vers l'engine
+│   ├── calibration.ts      Ratio actuel/prédit 5 jours
+│   ├── shadingTrainer.ts   Trainer par-bin de la shading map
+│   ├── shadingDome.ts      Overlay dôme hémisphérique (visualisation)
+│   ├── shadingMapView.ts   Section éditeur de la shading map
+│   ├── charts.ts           Charts timeline SVG + day-strip
+│   ├── dashboard.ts        Mode détail : today / tomorrow / battery
+│   ├── overlays.ts         Refresh des projections écran
+│   ├── timeline.ts         Tick d'horloge + handlers de scrub
+│   ├── lidar-view.ts       Mode LiDAR-View + opacity picker
+│   ├── init.ts             Bootstrap engine + visibility observer
+│   ├── format.ts           cfgHex, formatDate, formatLocalisedNumber
+│   └── editor.ts           &lt;helios-card-editor&gt; + color-picker custom
+├── engine/                 Sous-systèmes pilotés par l'engine
+│   ├── sun.ts              Position solaire + Liu-Jordan + thermal
+│   ├── pv-thermal.ts       Sandia NOCT cell-temp derating
+│   ├── pv-shading.ts       Raycast nDSM par-array + per-cell exposure
+│   ├── shadingMap.ts       Polar grid + per-cell ratio store
+│   ├── weather.ts          Open-Meteo multi-model + cache
+│   ├── buildings.ts        OpenFreeMap planet tile fetch + filtre rayon
+│   ├── shadows.ts          Polygones d'ombre projetés au sol
+│   ├── shadow-raster.ts    Rasteriseur offscreen pour l'image source
+│   ├── lighting.ts         Modulation jour/nuit
+│   ├── auto-rotate.ts      Orbite caméra rAF idle
+│   ├── detail-mode.ts      Plongée caméra mode détail
+│   ├── lidar-view-layer.ts Custom layer WebGL (dots + wireframe + fill)
+│   ├── lidar.ts            LidarSource interface + LIDAR_SOURCES registry
+│   └── lidar/              Pipeline LiDAR partagée + providers
+│       ├── pipeline.ts         Flood-fill + convex hull (partagé)
+│       ├── geotiff.ts          Fetch Float32 + DSM-DTM math
+│       ├── local-ndsm.ts       Provider BYO depuis config card
+│       └── providers/          1 fichier par pays / région
+├── css/
+│   ├── helios-card-css.ts        Styles runtime (chips, timeline, modes)
+│   └── helios-card-editor-css.ts Styles éditeur + color picker
+└── i18n/
+    ├── index.ts                Resolver + interface Translations typée
+    └── locales/                11 fichiers : cs, de, en, es, fr, it, nl, no, pl, pt, sv</code></pre>
+
+    <h3>3.2 Patterns de fichiers</h3>
+    <ul>
+        <li><strong><code>card/*.ts</code></strong> : fonctions libres + <code>XxxHost</code> interface</li>
+        <li><strong><code>engine/*.ts</code></strong> : un mélange (la pipeline LiDAR est procédurale, le layer LiDAR-View est une classe parce que MapLibre exige une classe avec <code>onAdd</code> / <code>render</code> / <code>onRemove</code>)</li>
+        <li><strong>Chaque fichier commence par un commentaire bloc</strong> qui explique le rôle du module, les invariants, et le pattern utilisé. Lisez-les d'abord, ils sont denses mais à jour.</li>
+        <li><strong>Pas de docstring sur les fonctions privées triviales.</strong> Les commentaires existants documentent les choix non-évidents (pourquoi ce seuil, pourquoi cet ordre, pourquoi ce repli sur erreur).</li>
+    </ul>
+
+    <hr>
+
+    <h2 id="4-cycle-de-vie-dune-carte">4. Cycle de vie d'une carte</h2>
+
+    <h3>4.1 Bootstrap</h3>
+    <p>L'élément Lit <code>&lt;helios-card&gt;</code> est instancié par Home Assistant quand le YAML déclare <code>type: custom:helios-card</code>. La séquence d'init :</p>
+    <ol>
+        <li><code>setConfig(config)</code> est appelé par HA, stocke la config dans <code>this.config</code> (déclencheur Lit).</li>
+        <li><code>connectedCallback()</code> (helios-card.ts) installe les listeners globaux (visibility observer, resize, hass-update).</li>
+        <li><code>firstUpdated()</code> ne fait RIEN d'engine, on attend que <code>hass</code> soit poussé.</li>
+        <li>Quand <code>hass</code> arrive, <code>init.ts:initEngine(host)</code> lance un <code>requestAnimationFrame</code> après un debounce de 500 ms.</li>
+        <li>Le 500 ms évite que les preview cards éphémères de l'éditeur HA (la card mini qui apparaît dans le picker) spawnent un MapLibre et claim un contexte WebGL pour rien. Voir <code>src/card/init.ts:260</code> et le commentaire au-dessus.</li>
+        <li><code>initEngineNow()</code> crée un <code>new HeliosEngine()</code>, l'attache au <code>&lt;div id="map-container"&gt;</code> rendu par Lit.</li>
+        <li>L'engine fait son <code>_initMap()</code>, <code>_loadStyle()</code>, attend <code>style.load</code>, puis <code>_onStyleLoad()</code> ajoute toutes les sources + layers Helios sur la carte.</li>
+        <li>À partir de là, <code>_refreshShadowsAndAtmosphere()</code> tourne sur un timer de 30 s, et la timeline + le scrub deviennent fonctionnels.</li>
+    </ol>
+
+    <h3>4.2 Updates Home Assistant</h3>
+    <p>Quand <code>hass</code> est repoussé par HA :</p>
+    <ul>
+        <li><code>set hass(h)</code> (setter sur la card) déclenche <code>refreshPv(this)</code>, <code>refreshBattery(this)</code>, <code>refreshSolarRadiation(this)</code>.</li>
+        <li>Si la config a changé (comparée par <code>_lastConfigSig</code>), <code>updateConfig()</code> est appelé sur l'engine pour propager.</li>
+        <li>Lit re-render automatiquement si un <code>@state</code> a été touché.</li>
+    </ul>
+
+    <h3>4.3 Teardown</h3>
+    <p><code>disconnectedCallback()</code> (helios-card.ts) :</p>
+    <ul>
+        <li>Annule les RAFs (<code>_lidarFadeRaf</code>, <code>_shadingDomeFadeRaf</code>, <code>_dashCountUpRaf</code>, <code>_autoRotateRaf</code>)</li>
+        <li>Disconnect l'IntersectionObserver</li>
+        <li>Clear l'interval d'horloge</li>
+        <li>Schedule un cleanup différé de l'engine après 1500 ms (<code>_pendingCleanupTimer</code>), parce que les layouts Masonry détachent / rattachent la card fréquemment. Si la card est rattachée avant 1500 ms, l'engine survit et reprend.</li>
+    </ul>
+    <p><code>HeliosEngine.cleanup()</code> :</p>
+    <ul>
+        <li>Cancel tous les AbortControllers</li>
+        <li>Cancel tous les rAF / idle handles (<code>_exposureChunkRaf</code>, <code>_exposureIdleHandle</code>)</li>
+        <li>Supprime explicitement chaque layer + source MapLibre (le <code>removeLayer('helios-lidar-view')</code> est crucial pour libérer les buffers GPU du custom layer)</li>
+        <li>Désenregistre tous les <code>map.off()</code></li>
+        <li>Force <code>WEBGL_lose_context.loseContext()</code> pour relâcher le slot WebGL</li>
+        <li>Sort de <code>_liveEngines</code> (le set qui force l'éviction au-delà d'un cap)</li>
+    </ul>
+    <blockquote>Toute fuite mémoire dans le projet vient d'un oubli dans cleanup(). Lire ce code une fois.</blockquote>
+
+    <hr>
+
+    <h2 id="5-le-moteur-helios-enginets">5. Le moteur (helios-engine.ts)</h2>
+    <p><code>HeliosEngine</code> est la plus grosse classe du projet (~4300 lignes). Elle est volontairement monolithique pour les raisons suivantes :</p>
+    <ul>
+        <li>MapLibre est stateful : chaque méthode doit voir l'état complet de la carte (zoom, pitch, bearing, sources, layers, etc.).</li>
+        <li>Splitter en sous-classes nécessiterait soit du multi-héritage soit une chaîne d'appels qui obscurcit ce qui se passe vraiment.</li>
+    </ul>
+
+    <p>Les méthodes publiques exposées à la card :</p>
+    <pre><code class="language-ts">// Bootstrap
+constructor(opts)
+public onMapTransform?: () => void                 // installé par la card
+public onShadowComputeStart?: () => void           // pareil
+public onShadowComputeEnd?: () => void
+
+// Configuration
+public updateConfig(cfg, hass): void               // propagé par la card
+public setHome(lat, lon): void
+
+// Projections (la card lit ces snapshots pour ses overlays SVG)
+public projectHomeLabelLayout(): {...}
+public projectHomeFootprints(): Array&lt;...&gt;
+public projectSunScene(): SunScene
+public projectCloudScene(): CloudScene
+
+// Modes
+public setDetailMode(on): void
+public setLidarViewActive(on): void
+public setLidarViewOpacity(opacity): void
+public setLidarViewFadeAlpha(alpha): void
+public setAutoRotateEnabled(on): void
+
+// LiDAR
+public getLidarRaster(): LidarRaster | null
+public getActiveLidarSourceId(): string | null
+
+// Lifecycle
+public cleanup(): void</code></pre>
+
+    <p>Les champs internes critiques :</p>
+    <ul>
+        <li><code>this.map</code> : l'instance <code>maplibregl.Map</code></li>
+        <li><code>this._lidarRaster</code> / <code>this._lidarShadowFeatures</code> : raster brut + features dérivées (polygones d'ombre)</li>
+        <li><code>this._lidarShadowKey</code> / <code>_lidarShadowFailedKey</code> / <code>_lidarShadowBackoffUntil</code> : cache key + backoff sur les fetches LiDAR (voir le système LiDAR)</li>
+        <li><code>this._lidarViewLayer</code> : instance du custom WebGL layer</li>
+        <li><code>this._weatherCache</code> : cache des fetches Open-Meteo</li>
+        <li><code>this._buildingsData</code> : features du fond de carte filtrées au rayon</li>
+    </ul>
+    <p>Le timer principal <code>_skyTimer</code> tourne toutes les 30 secondes : <code>_refreshShadowsAndAtmosphere()</code> recalcule la position du soleil, et si l'altitude a bougé de plus de 0.5°, redessine les shadows + met à jour le night-shade overlay + schedule un nouveau calcul d'exposure LiDAR-View.</p>
+
+    <hr>
+
+    <h2 id="6-le-rendu-helios-cardts--cardts">6. Le rendu (helios-card.ts + card/*.ts)</h2>
+    <p><code>helios-card.ts:render()</code> est une méthode unique de plus de 1000 lignes qui assemble le template Lit. Sa structure :</p>
+    <pre><code>&lt;ha-card class="..."&gt; // classes : theme + mode flags
+  &lt;div id="map-container"&gt;&lt;/div&gt;            // hôte MapLibre
+  ${timeline-strip si configuré}
+  ${overlay-top-left : clock + scrub-return}
+  ${overlay-top-right : mode-bar : Layer / LiDAR / Dome}
+  ${cloud-svg + cloud-leader + cloud-pct-label}
+  ${solar-svg + solar-pct-label : arc + disque + halo}
+  ${pv-home-anchor-svg + pv-pct-label}
+  ${battery-leader-svg + battery-pct-label x 2}
+  ${home-silhouette-svg + home-glow-svg + home-hitbox}
+  ${incidence ray}
+  ${dashboard panel si _detailMode}
+  ${shading dome overlay si _shadingDomeMode}
+  ${LiDAR-View opacity picker si _lidarViewMode}
+&lt;/ha-card&gt;</code></pre>
+    <p>Cette méthode est appelée par Lit à CHAQUE changement d'un <code>@state</code> field. Tous les frames de scrub (touch / mouse drag) déclenchent un re-render complet. Voir pièges connus pour les implications perf.</p>
+
+    <h3>Sous-modules de rendu</h3>
+    <ul>
+        <li><strong><code>card/overlays.ts</code></strong> : <code>refreshOverlays(host)</code> est appelé par l'engine via <code>onMapTransform</code>. Il appelle <code>engine.projectHomeLabelLayout()</code> (et autres), stocke les résultats dans des <code>@state</code> fields sur la card, ce qui déclenche Lit. C'est le pont entre les transformations MapLibre et le rendu SVG du card.</li>
+        <li><strong><code>card/charts.ts</code></strong> : la timeline (irradiance + cloud + PV chart optionnel) + le day-strip avec totaux kWh par jour. Calcule <code>effectiveForecastRatio</code> (calibration + shading map) à chaque point.</li>
+        <li><strong><code>card/dashboard.ts</code></strong> : le panneau de détail rendu quand <code>_detailMode === true</code>. Implémente le counter-up animation 700 ms via un rAF loop self-terminant.</li>
+        <li><strong><code>card/shadingDome.ts</code></strong> : l'overlay hémisphérique de la shading map (mode dôme). SVG-heavy, re-projeté à chaque transform.</li>
+    </ul>
+
+    <hr>
+
+    <h2 id="7-sous-systèmes-du-moteur-enginets">7. Sous-systèmes du moteur (engine/*.ts)</h2>
+
+    <h3>7.1 <code>engine/sun.ts</code></h3>
+    <p>Implémente la chaîne de calcul solaire. Trois fonctions exposées :</p>
+    <ul>
+        <li><strong><code>getSunPosition(date, lat, lon)</code></strong> : retourne <code>{altitude, azimuth}</code> en degrés. Math NOAA simplifiée : déclinaison + équation du temps + angle horaire. Validée à 0.30° d'erreur moyenne sur l'altitude et 0.36° sur l'azimut contre 376 points de référence.</li>
+        <li><strong><code>computePvPower(config, time, lat, lon, cloud, ctx)</code></strong> : préprediction PV pour UN array (tilt, azimuth, etc.). Chaîne complète : position solaire → GHI ciel-clair Haurwitz → atténuation Kasten-Czeplak → décomposition beam/diffus → transposition Liu-Jordan → dérating Sandia NOCT → raycast LiDAR si raster disponible. Retourne un pourcentage [0,1] de la STC.</li>
+        <li><strong><code>computePvPowerWeighted(config, time, lat, lon, cloud, ctx)</code></strong> : agrège les <code>pv-arrays</code> (multi-orientations) en pondérant par <code>peak-kwp</code> ou <code>share</code>.</li>
+    </ul>
+
+    <h3>7.2 <code>engine/weather.ts</code></h3>
+    <p>Fetch multi-modèle Open-Meteo + cache + back-off 429. Pour chaque fetch, query :</p>
+    <ul>
+        <li>Un modèle global (ECMWF IFS 0.25°)</li>
+        <li>Le meilleur modèle national/régional couvrant le point (AROME-France, UKMO UK, DWD ICON-D2, NOAA HRRR, BOM ACCESS-G, etc.)</li>
+    </ul>
+    <p>Fusion par médiane par-timestep, ce qui absorbe les outliers d'un modèle isolé. Cache LRU 30 minutes par signature <code>(lat, lon, forecastDays, pastDays, modelSet)</code>. Seul le premier hit après 30 min refait un réseau.</p>
+
+    <h3>7.3 <code>engine/buildings.ts</code></h3>
+    <p>Fetch OpenFreeMap planet vector tiles autour du domicile, décode via <code>@mapbox/vector-tile</code>, splitte les MultiPolygons qui groupent des bâtiments indépendants, filtre au rayon <code>building-radius</code>. Sépare les bâtiments en deux ensembles :</p>
+    <ul>
+        <li><strong>home cluster</strong> : le bâtiment au domicile + ceux dans <code>building-cluster-radius</code> (vérandas, garages collés), rendu full opacity.</li>
+        <li><strong>surroundings</strong> : les autres dans <code>building-radius</code>, rendu à <code>building-opacity</code>.</li>
+    </ul>
+    <p>Les deux deviennent des MapLibre <code>fill-extrusion</code> layers avec <code>fill-extrusion-height</code> lu sur la feature.</p>
+
+    <h3>7.4 <code>engine/shadows.ts</code> + <code>shadow-raster.ts</code></h3>
+    <p>Projette les polygones de bâtiments AU SOL selon la position du soleil (extrusion ombre). Pour chaque bâtiment :</p>
+    <ol>
+        <li>Pour chaque vertex, projette <code>(x, y, height)</code> → <code>(x', y')</code> au sol en suivant le rayon solaire inverse.</li>
+        <li>Concatène les vertices du bâtiment + les vertices projetés.</li>
+        <li>Calcule l'enveloppe convexe Sutherland-Hodgman du tout.</li>
+    </ol>
+    <p>Les polygones d'ombre sont rastérisés en noir sur un canvas offscreen, puis ce canvas devient une <code>image</code> source MapLibre. Un raster layer en lit avec <code>raster-opacity: shadow-opacity</code>. Cette approche évite la saturation alpha-compositing quand des bâtiments se chevauchent.</p>
+    <p>Quand un provider LiDAR couvre le domicile, <strong>on n'utilise pas du tout <code>shadows.ts</code></strong>. À la place, la pipeline LiDAR produit ses propres polygones via flood-fill.</p>
+
+    <h3>7.5 <code>engine/lighting.ts</code></h3>
+    <p>Modulation jour/nuit. Calcule l'opacité du <code>night-shade</code> overlay (smoothstep selon altitude solaire), la teinte ambré des bâtiments dans la fenêtre sunrise / sunset, et la couleur du sun-arc en fonction de la phase. Appelé depuis <code>_refreshShadowsAndAtmosphere</code> à chaque tick sky-timer.</p>
+
+    <h3>7.6 <code>engine/auto-rotate.ts</code></h3>
+    <p>Boucle rAF d'orbite caméra. Self-terminating quand <code>auto-rotate-enabled</code> est <code>false</code> OU une interaction utilisateur récente pause l'orbite. Vitesse 1°/s dans le sens contraire au soleil.</p>
+
+    <h3>7.7 <code>engine/detail-mode.ts</code></h3>
+    <p>Quand le détail s'active, anime la caméra via smoothstep (zoom de 0.8 à 1.4 sur 800 ms, pitch vers ~50°). Token rAF stocké dans <code>_detailDiveRaf</code>, annulé sur sortie.</p>
+
+    <h3>7.8 <code>engine/lidar-view-layer.ts</code></h3>
+    <p>Custom layer WebGL implémentant <code>CustomLayerInterface</code> MapLibre. Trois passes de draw : Points (<code>drawArrays</code>), Wireframe (<code>drawElements</code> connectant les voisins), et Irradiance fill (triangulation avec exposure per-vertex).</p>
+
+    <h3>7.9 <code>engine/pv-shading.ts</code></h3>
+    <ul>
+        <li><strong><code>isPanelShaded(raster, lat, lon, height, sunAlt, sunAz)</code></strong> : raycast depuis un point panneau vers le soleil contre le nDSM, retourne true si bloqué. Utilisé pour zéroer le beam direct sur une string ombragée.</li>
+        <li><strong><code>computeLidarCellExposureRows(...)</code></strong> : raycast par-cellule pour la carte d'irradiance, écrit <code>0</code> (ombre) ou <code>255</code> (lit) dans le buffer de sortie.</li>
+    </ul>
+    <p>Les deux raycasts utilisent un step de 2 m et une portée max de 200 m. Le step bilinéaire échantillonne le nDSM (et le DTM si présent) pour comparer la hauteur du rayon solaire à celle des obstacles.</p>
+
+    <h3>7.10 <code>engine/shadingMap.ts</code></h3>
+    <p>Le store + lookup de la carte d'ombrage adaptative (Grille polaire de 1200 cellules : 24 azimuts × 10 altitudes × 5 couvertures nuageuses). Chaque cellule stocke <code>(ratioSum, countWeight, lastUpdatedMs)</code>. Persisté en localStorage.</p>
+
+    <hr>
+
+    <h2 id="8-la-prédiction-pv--chaîne-de-calcul">8. La prédiction PV : chaîne de calcul</h2>
+    <p>Cette section décrit <code>computePvPower</code> pas-à-pas. C'est le cœur de la prédiction théorique et analytique.</p>
+
+    <h3>8.1 Position du soleil</h3>
+    <p>Pour un instant $t$ à $(\text{lat}, \text{lon})$, <code>getSunPosition</code> calcule :</p>
+    <ol>
+        <li>Jour julien fractionnaire depuis l'epoch GPS.</li>
+        <li>Déclinaison solaire $\delta$ :
+            $$ \delta = 23.45^\circ \times \sin\left(360^\circ \times \frac{284 + N}{365}\right) $$
+            où $N$ est le jour de l'année.
+        </li>
+        <li>Équation du temps $\text{EOT}$ (en minutes) :
+            $$ B = 360^\circ \times \frac{N - 81}{365} $$
+            $$ \text{EOT} = 9.87 \times \sin(2B) - 7.53 \times \cos(B) - 1.5 \times \sin(B) $$
+        </li>
+        <li>Heure solaire vraie : $\text{TST} = \text{UTC} + \frac{\text{lon}}{15} + \frac{\text{EOT}}{60}$</li>
+        <li>Angle horaire : $\text{HA} = 15^\circ \times (\text{TST} - 12)$</li>
+        <li>Altitude solaire :
+            $$ \sin(\text{alt}) = \sin(\text{lat}) \times \sin(\delta) + \cos(\text{lat}) \times \cos(\delta) \times \cos(\text{HA}) $$
+        </li>
+        <li>Azimut solaire (clockwise depuis le nord) :
+            $$ \sin(\text{az}) = \frac{-\cos(\delta) \times \sin(\text{HA})}{\cos(\text{alt})} $$
+            $$ \cos(\text{az}) = \frac{\sin(\delta) - \sin(\text{alt}) \times \sin(\text{lat})}{\cos(\text{alt}) \times \cos(\text{lat})} $$
+            $$ \text{az} = \text{atan2}(\sin(\text{az}), \cos(\text{az})) $$
+        </li>
+    </ol>
+
+    <h3>8.2 Irradiance ciel-clair (Haurwitz)</h3>
+    <p>Pour une altitude solaire $\text{alt} > 0$, le GHI ciel-clair ($\text{W/m}^2$) est calculé par :</p>
+    $$ \text{GHI\_clear} = 1098 \times \cos(z) \times \exp\left(\frac{-0.057}{\cos(z)}\right) $$
+    <p>où $z = 90^\circ - \text{alt}$ est l'angle zénithal.</p>
+
+    <h3>8.3 Atténuation nuageuse (Kasten-Czeplak)</h3>
+    $$ \text{GHI\_actual} = \text{GHI\_clear} \times \left(1 - 0.75 \times \left(\frac{\text{cloud}}{100}\right)^{3.4}\right) $$
+
+    <h3>8.4 Décomposition beam / diffus</h3>
+    <p>On sépare le GHI horizontal en composante directe (beam) et diffuse :</p>
+    <pre><code class="language-ts">directFraction = (kCloud - 0.25) / 0.75 * 0.85
+diffuse        = (1 - directFraction) * GHI_actual
+beam           = directFraction * GHI_actual</code></pre>
+    <blockquote>Note : cette décomposition ignore la masse d'air. Pour un soleil très bas, le modèle peut sur-estimer la part directe. C'est compensé downstream par la calibration 5 jours.</blockquote>
+
+    <h3>8.5 Transposition Liu-Jordan (POA)</h3>
+    <p>Conversion du GHI horizontal en POA (Plane Of Array) selon l'inclinaison du panneau :</p>
+    <ol>
+        <li>Cosinus de l'angle d'incidence $\cos\theta$ :
+            $$ d\text{Az} = \text{sun.azimuth} - \text{panel.azimuth} $$
+            $$ \cos\theta = \sin(\text{alt}) \times \cos(\text{tilt}) + \cos(\text{alt}) \times \sin(\text{tilt}) \times \cos(d\text{Az}) $$
+        </li>
+        <li>Ratio beam ($R_b$) :
+            $$ R_b = \frac{\max(0, \cos\theta)}{\max(\sin(5^\circ), \sin(\text{alt}))} $$
+            $$ \text{beamPOA} = \text{beam} \times R_b $$
+        </li>
+        <li>Diffus isotropique : $\text{diffusePOA} = \text{diffuse} \times \frac{1 + \cos(\text{tilt})}{2}$</li>
+        <li>Réflectance sol (albedo = 0.20) : $\text{groundPOA} = \text{GHI\_actual} \times 0.20 \times \frac{1 - \cos(\text{tilt})}{2}$</li>
+        <li>$\text{POA Total} = \text{beamPOA} + \text{diffusePOA} + \text{groundPOA}$</li>
+    </ol>
+
+    <h3>8.6 Dérating thermique Sandia NOCT</h3>
+    <p>Chute de rendement liée à la température :</p>
+    $$ T_{\text{cell}} = T_{\text{air}} + \frac{\text{NOCT} - 20}{800} \times \text{GHI} - 1.5 \times \text{wind} $$
+    $$ \text{factor} = 1 + \gamma_{\text{pmp}} \times (T_{\text{cell}} - 25) $$
+    <p>Avec $\text{NOCT} = 45^\circ\text{C}$ et $\gamma_{\text{pmp}} = -0.0040/^\circ\text{C}$ (mono-Si typique).</p>
+
+    <h3>8.7 Raycast LiDAR (ombrage par obstacle)</h3>
+    <p>Pour un pas de 2 m à 200 m, on échantillonne le nDSM (hauteur d'obstacle) et le DTM (pente terrain). Si $\text{obstacleZ} > \text{rayZ}$, l'ombre est détectée : <strong>on zéro le beam direct mais on conserve l'apport du diffus et du sol (ground)</strong>. Le panneau tombe à ~25-30% au lieu de 0.</p>
+
+    <h3>8.8 Agrégation multi-array</h3>
+    <p>Pondération des différents calques d'orientation (<code>pv-arrays</code>) par leur puissance crête (<code>peak-kwp</code>) ou leur part (<code>share</code>), suivie du plafonnement par l'onduleur (<code>pv-inverter-max-kw</code>).</p>
+
+    <hr>
+
+    <h2 id="9-le-système-lidar">9. Le système LiDAR</h2>
+
+    <h3>9.1 Registry de providers</h3>
+    <p>Le fichier <code>src/engine/lidar.ts</code> expose le tableau <code>LIDAR_SOURCES</code> contenant les providers actifs (10 actuellement enregistrés : <code>fr.ts</code> (IGN HD), <code>uk.ts</code>, <code>es.ts</code>, <code>nl.ts</code>, <code>no.ts</code>, <code>de-nrw.ts</code>, <code>de-bb-be.ts</code>, <code>pl.ts</code>, <code>ca.ts</code>, <code>us-vt.ts</code>). Quatre sont actuellement dormants (attente de qualité DSM-DTM).</p>
+
+    <h3>9.2 Pipeline partagée (flood-fill + convex hull)</h3>
+    <p><code>processNdsmToShadows</code> gère la transformation du raster en polygones exploitables :</p>
+    <ol>
+        <li>Threshold + crop circulaire autour du domicile.</li>
+        <li>Flood-fill 8-connecté avec cap à 80 cellules par clump (permet de découper les barres d'immeubles ou haies d'arbres continues).</li>
+        <li>Calcul de l'enveloppe convexe (Convex Hull) par clump pour générer des Features GeoJSON identiques à OpenFreeMap.</li>
+    </ol>
+
+    <h3>9.3 Format GeoTIFF / nDSM 2-bandes</h3>
+    <ul>
+        <li><strong>1-bande</strong> : Float32 correspondant à la hauteur brute de l'obstacle au-dessus du sol.</li>
+        <li><strong>2-bandes</strong> (recommandé) : Bande 1 = nDSM, Bande 2 = DTM (élévation absolue du sol). Permet de gérer fidèlement le relief topographique montant ou descendant.</li>
+    </ul>
+
+    <h3>9.4 La couche WebGL custom</h3>
+    <p>Le traitement s'effectue en 3 passes GPU dans <code>lidar-view-layer.ts</code> : points, irradiance fill (coloration chaud/froid selon l'attribut <code>a_exposure</code>), et wireframe.</p>
+    <p>Le calcul d'exposure est découpé par paquets de 8 lignes (<code>CHUNK_ROWS = 8</code>) via rAF pour ne jamais bloquer le thread principal (opération transparente &lt; 16 ms).</p>
+    <p><strong>Gestion des erreurs / backoff :</strong> En cas d'erreur réseau/CORS répétée, un mécanisme de backoff exponentiel bloque les requêtes inutiles (<code>60 s → 5 min → 15 min → 30 min → 60 min</code>).</p>
+
+    <hr>
+
+    <h2 id="10-les-couches-dapprentissage">10. Les couches d'apprentissage</h2>
+
+    <h3>10.1 Calibration 5 jours (scalaire)</h3>
+    <p>Calcule le rapport global entre la production réelle observée (historique HA) et la prédiction théorique du modèle sur les 5 derniers jours. Ce ratio, borné à $[0.5, 1.5]$, absorbe les biais statiques (vieillissement des panneaux, salissures, pertes constantes de l'onduleur).</p>
+
+    <h3>10.2 Carte d'ombrage adaptative (vectorielle)</h3>
+    <p>Mise à jour toutes les 5 minutes dans les bins polaires (1200 cellules). Calcule en continu le ratio réel/prédit par tranche de 30 minutes. Lors de la lecture, les valeurs anciennes subissent une décroissance via une demi-vie de 60 jours.</p>
+
+    <h3>10.3 Le guard cutoff onduleur</h3>
+    <p>Si la batterie est pleine, l'onduleur bride souvent la production PV. Le trainer exclut ces tranches horaires (<code>min(SoC across banks) >= cutoff</code>) pour éviter d'enregistrer de "fausses ombres" (ombres fantômes).</p>
+
+    <h3>10.4 Le blend <code>effectiveForecastRatio</code></h3>
+    <p>La règle de priorité est simple : si la cellule polaire de la Shading Map dispose d'assez de données (seuil de confiance), elle prévaut. Sinon, le moteur applique le ratio scalaire global des 5 jours.</p>
+
+    <hr>
+
+    <h2 id="11-la-timeline-et-le-scrub-temporel">11. La timeline et le scrub temporel</h2>
+    <p>La barre basse combine 3 graphs au format SVG (Production PV, Irradiance + Nuages, Day-strip avec totaux kWh). Le glissement du pointeur (scrub) met à jour la variable d'état réactive <code>_selectedTime</code>, forçant le recalcul complet de la scène 3D (position du soleil et ombres associées) à l'instant ciblé.</p>
+
+    <hr>
+
+    <h2 id="12-le-dashboard-mode-détail">12. Le dashboard (mode détail)</h2>
+    <p>Déclenché par un clic sur la maison. La caméra effectue un plongeon (smoothstep zoom + pitch de 50° en 800 ms), l'interface HUD s'estompe au profit du panneau <code>.detail-panel</code>. Les chiffres de production s'animent via une boucle rAF de 700 ms (effet de compteur progressif).</p>
+
+    <hr>
+
+    <h2 id="13-les-modes-spéciaux-lidar-view-dôme">13. Les modes spéciaux (LiDAR-View, dôme)</h2>
+    <ul>
+        <li><strong>LiDAR-View :</strong> Active le nuage de points et estompe le HUD. Le curseur d'opacité modifie une variable simple (plain field) pour éviter de saturer Lit avec 50 re-renders par seconde lors du glissement.</li>
+        <li><strong>Dôme d'ombrage :</strong> Représentation SVG hémisphérique du ciel au-dessus de la maison. Colore visuellement chaque case de la Shading Map apprise (Rouge = ombragé/sous-production, Vert = dégagé, Gris = inconnu).</li>
+    </ul>
+
+    <hr>
+
+    <h2 id="14-internationalisation-i18n">14. Internationalisation (i18n)</h2>
+    <p>Le fichier <code>src/i18n/index.ts</code> centralise le type strict <code>Translations</code>. Le projet supporte 11 langues. Le compilateur <code>tsc</code> bloque le build si une clé ajoutée n'est pas répercutée dans l'intégralité des 11 fichiers de locales.</p>
+
+    <hr>
+
+    <h2 id="15-configuration--éditeur-visuel">15. Configuration + éditeur visuel</h2>
+    <p>La source de vérité des paramètres réside dans l'interface <code>HeliosConfig</code> (<code>src/helios-config.ts</code>). L'éditeur visuel UI (<code>src/card/editor.ts</code>) se compose d'un accordéon de 14 sections rétractables. Les tableaux complexes (orientations de panneaux ou banques de batteries) se pilotent via un pattern dynamique d'ajout/suppression de lignes avec un plafond strict fixé à 6 rangées maximum.</p>
+
+    <hr>
+
+    <h2 id="16-conventions-et-patterns">16. Conventions et patterns</h2>
+    <ul>
+        <li><strong>Style :</strong> TypeScript strict. Pas de tirets cadratins (—) dans les commentaires pour éviter le style généré par IA. Pas d'historique de version dans le code. Messages de commit standardisés : <code>vX.Y.Z[-suffix]: titre</code>.</li>
+        <li><strong>Host structurel :</strong> Modules isolés via des fonctions pures travaillant sur une interface <code>Host</code> partagée. Pas de conteneur d'injection de dépendances.</li>
+        <li><strong>Mémoisation :</strong> Les calculs lourds dépendants de la configuration sont mis en cache sur l'identité de l'objet <code>this.config</code>.</li>
+        <li><strong>Ressources GPU / CPU :</strong> Nettoyage rigoureux (cleanup) obligatoire des handles rAF, annulation des requêtes fetch via <code>AbortController</code>, et destruction explicite du layer WebGL (<code>removeLayer</code>) sous peine de fuites mémoire critiques, notamment sous iOS Safari.</li>
+    </ul>
+
+    <hr>
+
+    <h2 id="17-comment-contribuer">17. Comment contribuer</h2>
+
+    <h3>17.1 Ajouter un provider LiDAR</h3>
+    <p>Créer un fichier dans <code>src/engine/lidar/providers/[code_pays].ts</code> implémentant l'interface <code>LidarSource</code> (définir la Bounding Box de couverture, les URLs de fetch DSM/DTM, et appeler <code>processNdsmToShadows</code>). Enregistrer ensuite la constante dans la liste <code>LIDAR_SOURCES</code> du fichier <code>src/engine/lidar.ts</code>.</p>
+
+    <h3>17.2 Ajouter une clé de config</h3>
+    <ol>
+        <li>Déclarer la propriété typée <code>unknown</code> dans <code>src/helios-config.ts</code> et définir sa valeur par défaut.</li>
+        <li>Écrire une fonction de parsing/validation sécurisée.</li>
+        <li>Ajouter la clé dans le tableau <code>WATCH_KEYS</code> (<code>src/card/init.ts</code>) pour forcer la mise à jour réactive.</li>
+        <li>Créer l'élément de contrôle HTML/Lit correspondant dans l'éditeur visuel (<code>src/card/editor.ts</code>) et enrichir les dictionnaires i18n.</li>
+    </ol>
+
+    <h3>17.3 Ajouter une langue</h3>
+    <p>Créer la locale dans <code>src/i18n/locales/</code>, traduire l'intégralité des entrées calquées sur le modèle de la structure <code>Translations</code>, puis référencer le fichier dans l'objet <code>LOCALES</code> de <code>src/i18n/index.ts</code>.</p>
+
+    <hr>
+
+    <h2 id="18-pièges-connus">18. Pièges connus</h2>
+    <ul>
+        <li><strong>Lit re-render storm :</strong> Le frottement rapide de la timeline sollicite fortement la méthode <code>render()</code>. Les variables annexes comme l'opacité sont volontairement stockées hors de l'état réactif pour préserver les performances.</li>
+        <li><strong>WebGL Buffers Leak :</strong> MapLibre détruit mal les contextes WebGL sur mobile. L'appel explicite à <code>map.removeLayer()</code> doit impérativement précéder le déchargement de la carte.</li>
+        <li><strong>Cumulative energy day-boundary :</strong> Les deltas de production à cheval sur minuit (ex: sample à 23h58 puis 00h05) faussent les statistiques. La fonction de calibration rejette systématiquement les calculs dont les deux points temporels n'appartiennent pas à la même journée calendaire.</li>
+        <li><strong>Précision Float32 en coordonnées mondiales :</strong> Les grands nombres de la projection WebMercator dégradent la précision 32-bit loin de l'équateur. Le Custom Layer applique un décalage (shift) local pour basculer le repère géométrique $(0,0)$ directement sur la maison de l'utilisateur.</li>
+    </ul>
+
+    <hr>
+
+    <h2>19. Pour aller plus loin</h2>
+    <ul>
+        <li>Lire les commentaires de début de fichier.</li>
+        <li>Consulter <code>ARCHITECTURE.md</code> pour appréhender la vision macroscopique.</li>
+        <li>Pour toute question d'envergure, ouvrir un fil de discussion sur l'espace GitHub dédié.</li>
+    </ul>
+
+</div>
+
+</body>
+</html>

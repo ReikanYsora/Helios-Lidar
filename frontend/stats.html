@@ -100,6 +100,32 @@
       </div>
     </section>
 
+    <!--  GitHub star history for the two tracked repos (Helios card
+          + Helios-Lidar companion site). Two-line cumulative chart so
+          the eye reads the growth slope, not the hourly star births.
+          Range tabs slice the timestamps client-side from the full
+          payload returned by /api/github-stars, so the server fetches
+          GitHub at most once per hour regardless of which range the
+          page is on.                                                  -->
+    <section class="card stats-histogram" data-hist="github-stars">
+      <header class="histogram-header">
+        <h2>GitHub stars over time</h2>
+        <div class="histogram-tabs" role="tablist" aria-label="Time range">
+          <button type="button" class="hist-tab"           data-range="24h" role="tab" aria-selected="false">24 h</button>
+          <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
+          <button type="button" class="hist-tab is-active" data-range="30d" role="tab" aria-selected="true">30 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
+        </div>
+        <div id="github-stars-totals" class="growth-kpis" aria-live="polite">
+          <span class="growth-kpi" id="github-stars-total-helios">Helios —</span>
+          <span class="growth-kpi" id="github-stars-total-lidar">Helios-Lidar —</span>
+        </div>
+      </header>
+      <div class="chart-wrap chart-wrap--wide">
+        <canvas id="chart-histogram-github-stars"></canvas>
+      </div>
+    </section>
+
     <!--  Three histograms with shared 24h / 7d / 30d range tabs. -->
     <section class="card stats-histogram" data-hist="visits">
       <header class="histogram-header">

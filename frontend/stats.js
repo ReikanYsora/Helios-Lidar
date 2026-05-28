@@ -638,6 +638,121 @@ async function renderDownloadsPerVersion()
     });
 }
 
+//GitHub stars: keep the full per-repo timestamp arrays on the side
+//so the range tabs can re-render client-side without re-fetching.
+//Default range 30 d to match the growth-index chart.
+let _githubStars = { repos: [] };
+let _githubStarsRange = '30d';
+let _githubStarsChart = null;
+
+async function loadGithubStars()
+{
+    try
+    {
+        const resp = await fetch('/api/github-stars', { credentials: 'same-origin' });
+        if (!resp.ok) return;
+        _githubStars = await resp.json();
+    }
+    catch (_) { return; }
+    //Header totals: total star count per repo, always derived from
+    //the full timestamp list, never trimmed by the visible range.
+    for (const r of _githubStars.repos || [])
+    {
+        const el = r.repo === 'Helios'
+            ? document.getElementById('github-stars-total-helios')
+            : document.getElementById('github-stars-total-lidar');
+        if (el) el.textContent = `${r.label}: ${r.total.toLocaleString()} ★`;
+    }
+    renderGithubStarsChart();
+}
+
+//Bucket a sorted list of star epochs (seconds since 1970) into
+//cumulative datapoints for Chart.js. The cumulative form is the
+//right read for "growth over time": each point is the TOTAL stars
+//at the bucket end, not the births inside the bucket. Hourly
+//buckets for 24h / 7d, daily for 30d / 1y so the X axis stays
+//readable.
+function _bucketStarsCumulative(starredAtUnix, range, totalAtRangeStart)
+{
+    const now = Math.floor(Date.now() / 1000);
+    const RANGES = {
+        '24h': { spanSec: 24 * 3600,         stepSec: 3600,      labels: 24 },
+        '7d':  { spanSec: 7 * 24 * 3600,     stepSec: 6 * 3600,  labels: 28 },
+        '30d': { spanSec: 30 * 24 * 3600,    stepSec: 24 * 3600, labels: 30 },
+        '1y':  { spanSec: 365 * 24 * 3600,   stepSec: 24 * 3600, labels: 365 },
+    };
+    const r = RANGES[range] || RANGES['30d'];
+    const start = now - r.spanSec;
+    const labels = [];
+    const data = [];
+    let cumulative = totalAtRangeStart;
+    let idx = 0;
+    //Skip forward through stars older than the window start, those
+    //are folded into the baseline.
+    while (idx < starredAtUnix.length && starredAtUnix[idx] < start) idx++;
+    for (let bucketEnd = start + r.stepSec; bucketEnd <= now + r.stepSec; bucketEnd += r.stepSec)
+    {
+        while (idx < starredAtUnix.length && starredAtUnix[idx] < bucketEnd)
+        {
+            cumulative++;
+            idx++;
+        }
+        const d = new Date(bucketEnd * 1000);
+        let label;
+        if (range === '24h') label = d.toISOString().slice(11, 16);  //HH:MM
+        else if (range === '7d') label = `${d.toISOString().slice(5, 10)} ${d.toISOString().slice(11, 13)}h`;
+        else                    label = d.toISOString().slice(5, 10);  //MM-DD
+        labels.push(label);
+        data.push(cumulative);
+    }
+    return { labels, data };
+}
+
+function renderGithubStarsChart()
+{
+    const ctx = document.getElementById('chart-histogram-github-stars');
+    if (!ctx) return;
+    if (_githubStarsChart) { _githubStarsChart.destroy(); _githubStarsChart = null; }
+    const range = _githubStarsRange;
+    const RANGE_SEC = { '24h': 86400, '7d': 604800, '30d': 2592000, '1y': 31536000 }[range] || 2592000;
+    const cutoff = Math.floor(Date.now() / 1000) - RANGE_SEC;
+
+    //Two-line cumulative chart, one dataset per tracked repo. The
+    //baseline (totalAtRangeStart) is "how many stars the repo already
+    //had at the start of the window", so the line starts at that
+    //level rather than at zero.
+    const palette = ['#facc15', '#3b82f6'];   //jaune Helios, bleu Helios-Lidar
+    const datasets = (_githubStars.repos || []).map((r, i) =>
+    {
+        const stars = r.starred_at_unix || [];
+        const baseline = stars.filter(t => t < cutoff).length;
+        const buck = _bucketStarsCumulative(stars, range, baseline);
+        return {
+            label: r.label,
+            data: buck.data,
+            labels: buck.labels,
+            borderColor: palette[i % palette.length],
+            backgroundColor: palette[i % palette.length] + '22',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.25,
+            fill: false,
+        };
+    });
+    //Both repos share the same time grid by construction, so we can
+    //reuse one labels array.
+    const labels = datasets[0]?.labels || [];
+    const opts = lineOptions();
+    opts.plugins.tooltip.callbacks.label = (item) =>
+        `${item.dataset.label}: ${item.parsed.y.toLocaleString()} ★`;
+    _githubStarsChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: opts,
+    });
+}
+
+
 async function loadStats()
 {
     try
@@ -675,6 +790,13 @@ async function loadStats()
     Object.keys(tables).forEach(applyTable);
     renderDownloadsPerVersion();
 
+    //Fire the GitHub stars fetch in parallel. It's served by a
+    //separate endpoint (no payload coupling with the visitor stats
+    //snapshot) and the chart renders independently once the response
+    //lands. Failure here is silent: the rest of the dashboard stays
+    //functional, the stars section just shows its placeholder.
+    loadGithubStars();
+
     const refreshEl = document.getElementById('stats-fetched-at');
     if (refreshEl && snapshot.fetched_at_unix)
     {
@@ -683,6 +805,25 @@ async function loadStats()
         catch (_) { refreshEl.textContent = d.toISOString(); }
     }
 }
+
+//Special-case wiring for the GitHub stars section: not driven by the
+//`histograms` registry because its payload comes from a separate
+//endpoint, but the tab UX is identical so we mirror the click handler.
+document.querySelectorAll('[data-hist="github-stars"] .hist-tab').forEach((tab) =>
+{
+    tab.addEventListener('click', () =>
+    {
+        const range = tab.dataset.range;
+        _githubStarsRange = range;
+        document.querySelectorAll('[data-hist="github-stars"] .hist-tab').forEach((t) =>
+        {
+            const isActive = t.dataset.range === range;
+            t.classList.toggle('is-active', isActive);
+            t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+        renderGithubStarsChart();
+    });
+});
 
 document.querySelectorAll('.stats-histogram').forEach((section) =>
 {

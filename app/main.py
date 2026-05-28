@@ -16,6 +16,7 @@ is transport, validation of HTTP inputs, and bookkeeping only.
 
 from __future__ import annotations
 
+import json
 import logging
 import shutil
 import threading
@@ -30,7 +31,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from app import helios_downloads, jobs as job_store, lidar_sources, server_stats, visitor_stats
+from app import github_stars, helios_downloads, jobs as job_store, lidar_sources, server_stats, visitor_stats
 from app.config import settings
 from app.jobs import Job, JobStatus
 from app.stats import StatsStore
@@ -249,6 +250,29 @@ def coverage_page() -> FileResponse:
     )
 
 
+@app.get("/docs/{lang}")
+def docs_page(lang: str) -> FileResponse:
+    """Developer-facing documentation, served per-language from
+    frontend/docs/{lang}.html. The naming convention keeps the URL
+    space clean ( /docs/fr , /docs/en when it lands, etc.) and makes
+    adding a new translation a single-file drop without touching this
+    route. 404 if the locale isn't published yet, FastAPI handles the
+    response via the FileResponse path miss."""
+    #Restrict to a-z lowercase letters to keep the path safe (no
+    #traversal, no funky filenames). Two- or three-letter ISO 639-1 /
+    #639-2 codes only.
+    if not lang.isalpha() or not lang.islower() or len(lang) > 3:
+        raise HTTPException(status_code=404)
+    target = FRONTEND_DIR / "docs" / f"{lang}.html"
+    if not target.is_file():
+        raise HTTPException(status_code=404)
+    return FileResponse(
+        target,
+        media_type="text/html; charset=utf-8",
+        headers={"cache-control": "no-cache, must-revalidate"},
+    )
+
+
 @app.get("/stats", dependencies=[Depends(_check_stats_auth)])
 def stats_page() -> FileResponse:
     """Hidden visitor-analytics dashboard. Not linked from anywhere
@@ -261,6 +285,34 @@ def stats_page() -> FileResponse:
         page,
         media_type="text/html; charset=utf-8",
         headers={"cache-control": "no-cache, must-revalidate"},
+    )
+
+
+@app.get("/api/github-stars", dependencies=[Depends(_check_stats_auth)])
+def api_github_stars() -> JSONResponse:
+    """GitHub star history for the tracked repos (Helios + Helios-Lidar).
+    Returned as a single per-repo payload listing every star's
+    `starred_at` epoch; the frontend buckets / slices client-side
+    according to the visible range tab (24h / 7d / 30d / 1y). Cached
+    in-process for 1 hour to stay well inside the 60 req/h anonymous
+    GitHub quota.
+    """
+    snap = github_stars.get_stars_snapshot()
+    return JSONResponse(
+        content={
+            "fetched_at_unix": snap.fetched_at_unix,
+            "repos": [
+                {
+                    "owner": r.owner,
+                    "repo":  r.repo,
+                    "label": r.label,
+                    "total": len(r.starred_at_unix),
+                    "starred_at_unix": r.starred_at_unix,
+                }
+                for r in snap.repos
+            ],
+        },
+        headers={"cache-control": "public, max-age=600"},
     )
 
 
@@ -536,6 +588,16 @@ def _process(job_id: str, client_ip: str | None = None) -> None:
         #render a live countdown to the deletion moment.
         job.cog_expires_at = time.time() + COG_TTL_SECONDS
         job.save()
+        #Immediate space reclaim: now that the job is DONE and the COG
+        #lives under output/, the per-job working directory only needs
+        #to keep `status.json` so the polling endpoint can still answer
+        #GET /jobs/{id}. The original LAZ + intermediate rasters can be
+        #2-3 GB each, leaving them around for the full COG_TTL_SECONDS
+        #window pinned disk space across every concurrent job AND
+        #orphaned them whenever the worker was OOM-killed mid-process
+        #(the threading.Timer below also dies on restart, leaving the
+        #heavy files until the periodic sweeper runs).
+        _trim_job_dir_to_status_only(job_id)
         #Bump the public conversions counter. Best-effort, a
         #stats hiccup never blocks a finished job.
         try:
@@ -573,3 +635,127 @@ def _delete_output_cog(job_id: str) -> None:
         cog_path.unlink(missing_ok=True)
     except OSError as exc:
         log.warning("delayed cog cleanup failed for %s: %s", job_id, exc)
+    #Also drop the per-job working directory entirely now that the COG
+    #is gone. The status.json was useful only to answer pending pollers
+    #while the COG was downloadable; once the file is gone, the job
+    #endpoint can return 410 instead.
+    job_dir = settings.jobs_dir / job_id
+    try:
+        shutil.rmtree(job_dir, ignore_errors=True)
+    except OSError as exc:
+        log.warning("delayed job dir cleanup failed for %s: %s", job_id, exc)
+
+
+def _trim_job_dir_to_status_only(job_id: str) -> None:
+    """Drop every file inside the job's working dir except `status.json`.
+    Called immediately after the COG has been published to output/, to
+    reclaim the multi-GB LAZ + intermediate rasters straight away
+    rather than waiting for the TTL window AND surviving worker
+    restarts where the in-process threading.Timer would otherwise die.
+    """
+    job_dir = settings.jobs_dir / job_id
+    if not job_dir.is_dir():
+        return
+    for entry in job_dir.iterdir():
+        if entry.name == "status.json":
+            continue
+        try:
+            if entry.is_dir():
+                shutil.rmtree(entry, ignore_errors=True)
+            else:
+                entry.unlink(missing_ok=True)
+        except OSError as exc:
+            log.warning("trim_job_dir: %s failed: %s", entry, exc)
+
+
+#Sweeper interval + thresholds. 10 min between passes is short enough
+#that an OOM-killed worker leaves disk waste for at most one cycle
+#after the restart; 30 min stale-processing threshold is comfortably
+#longer than any real conversion (~ 5-10 min) so we never trim an
+#actually-running job by accident.
+_SWEEPER_INTERVAL_SECONDS = 10 * 60
+_STALE_PROCESSING_THRESHOLD_SECONDS = 30 * 60
+
+
+def _sweep_stale_jobs() -> None:
+    """One sweep pass. Removes:
+      - every job dir whose `status.json` reads DONE or FAILED AND was
+        last touched > COG_TTL_SECONDS ago (final cleanup, mirrors the
+        threading.Timer that may have died with a worker restart)
+      - every job dir whose `status.json` reads a non-terminal state
+        (QUEUED / VALIDATING / PROCESSING / COGGING) AND was last
+        touched > 30 min ago (worker died mid-conversion, the timer
+        won't ever advance it, so the dir is dead weight)
+      - every orphan dir without a `status.json` AND created > 1 h ago
+        (mid-upload crash before save())
+
+    Best-effort, swallows OSError. A sweep that fails to delete one
+    dir still tries the next.
+    """
+    now = time.time()
+    if not settings.jobs_dir.is_dir():
+        return
+    removed = 0
+    kept = 0
+    for entry in settings.jobs_dir.iterdir():
+        if not entry.is_dir():
+            continue
+        status_file = entry / "status.json"
+        try:
+            if not status_file.is_file():
+                #Orphan: mid-upload crash before save(). Grace period
+                #of 1 hour so we don't blow up a really-just-now upload.
+                mtime = entry.stat().st_mtime
+                if (now - mtime) > 3600:
+                    shutil.rmtree(entry, ignore_errors=True)
+                    removed += 1
+                else:
+                    kept += 1
+                continue
+            raw = status_file.read_text()
+            data = json.loads(raw)
+            status = data.get("status", "")
+            mtime = status_file.stat().st_mtime
+            age = now - mtime
+            if status in ("done", "failed") and age > COG_TTL_SECONDS:
+                shutil.rmtree(entry, ignore_errors=True)
+                removed += 1
+            elif status in ("queued", "validating", "processing", "cogging") \
+                    and age > _STALE_PROCESSING_THRESHOLD_SECONDS:
+                #Worker died mid-conversion. Nothing will advance the
+                #state, the dir is just consuming disk.
+                shutil.rmtree(entry, ignore_errors=True)
+                removed += 1
+            else:
+                kept += 1
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            log.warning("sweep: failed to inspect %s: %s", entry, exc)
+            kept += 1
+    if removed:
+        log.info("sweep: removed %d stale job dir(s), kept %d", removed, kept)
+
+
+def _sweeper_loop() -> None:
+    """Daemon thread loop. Fires _sweep_stale_jobs every
+    _SWEEPER_INTERVAL_SECONDS for the lifetime of the worker. One
+    sweep on startup catches the orphan accumulation from any
+    previous worker restart.
+    """
+    #Immediate first pass on startup. Important on worker restart so
+    #orphans from the previous lifecycle get cleaned even if the
+    //service runs continuously after that.
+    try:
+        _sweep_stale_jobs()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("sweeper startup pass failed: %s", exc)
+    while True:
+        time.sleep(_SWEEPER_INTERVAL_SECONDS)
+        try:
+            _sweep_stale_jobs()
+        except Exception as exc:  # noqa: BLE001
+            log.warning("sweeper pass failed: %s", exc)
+    #(unreachable, the loop exits only with the daemon thread)
+
+
+_sweeper_thread = threading.Thread(target=_sweeper_loop, name="jobs-sweeper", daemon=True)
+_sweeper_thread.start()
