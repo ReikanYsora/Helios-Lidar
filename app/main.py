@@ -31,7 +31,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from app import github_stars, hacs_pr_status, helios_downloads, jobs as job_store, lidar_sources, server_stats, visitor_stats
+from app import github_stars, hacs_pr_status, helios_downloads, jobs as job_store, lidar_proxy, lidar_sources, server_stats, visitor_stats
 from app.config import settings
 from app.jobs import Job, JobStatus
 from app.stats import StatsStore
@@ -134,6 +134,18 @@ def conversions_count() -> JSONResponse:
         content={"count": n},
         headers={"cache-control": "public, max-age=300"},
     )
+
+
+@app.get("/api/lidar-proxy")
+def lidar_proxy_endpoint(upstream: str) -> Response:
+    """CORS relay for upstream LiDAR endpoints whose servers omit
+    `Access-Control-Allow-Origin`. The card calls this with the full
+    upstream URL; we validate the hostname against a server-side
+    allowlist, fetch the payload, and return it with the CORS header
+    the FastAPI middleware adds automatically. See app/lidar_proxy.py
+    for the allowlist + payload limits.
+    """
+    return lidar_proxy.fetch_upstream(upstream)
 
 
 @app.get("/api/helios-downloads")
