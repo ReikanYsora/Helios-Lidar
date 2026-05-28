@@ -29,6 +29,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import NamedTuple
 
@@ -230,6 +231,79 @@ def start_sampler(jsonl_path: Path) -> None:
         daemon=True,
     )
     t.start()
+
+
+def backfill_history(jsonl_path: Path, days_back: int = 7, sleep_between: float = 7.0) -> int:
+    """One-shot helper to bootstrap the chart with historical context.
+    For each of the last `days_back` daily midpoints UTC, computes how
+    many PRs were ahead of the Helios submission AT THAT TIME and
+    appends a Sample to the JSONL file. After this runs once, the
+    regular hourly sampler picks up from "now" forward.
+
+    Math: at instant D, a PR was "ahead" of ours if and only if it
+    was created before TARGET_PR_CREATED_AT AND still open at D. That
+    second condition splits into two disjoint cases:
+      A. The PR is STILL open today (so it was open at D too)
+      B. The PR is closed today AND closed AFTER D (so it was open at D)
+
+    Two Search API calls cover (A) and (B). Case (A) doesn't depend
+    on D so we issue it once and reuse the value for every day.
+    Case (B) needs one call per date with `closed:>D`.
+
+    Anonymous Search rate limit is 10 req/min; the default 7 s sleep
+    between requests keeps us at 8 req/min, comfortable margin.
+
+    Returns the number of samples actually appended (skips days
+    before TARGET_PR_CREATED_AT because the PR didn't exist yet).
+    """
+    #Case (A): currently-still-open PRs that landed before us.
+    still_open_q = (
+        f"repo:{TARGET_PR_OWNER}/{TARGET_PR_REPO} "
+        f"is:pr is:open "
+        f'label:"{TARGET_PR_LABEL}" '
+        f"created:<{TARGET_PR_CREATED_AT}"
+    )
+    so_params = urllib.parse.urlencode({"q": still_open_q, "per_page": "1"})
+    so_data = _http_get_json(f"https://api.github.com/search/issues?{so_params}")
+    if not isinstance(so_data, dict):
+        raise ValueError("backfill: unexpected payload for still-open query")
+    still_open_count = int(so_data.get("total_count", 0))
+    log.info("backfill: %d PRs are STILL open today and were created before us", still_open_count)
+
+    target_dt = datetime.fromisoformat(TARGET_PR_CREATED_AT.replace("Z", "+00:00"))
+    now_utc = datetime.now(timezone.utc).replace(microsecond=0)
+    appended = 0
+    for i in range(days_back, 0, -1):
+        time.sleep(sleep_between)
+        sample_dt = (now_utc - timedelta(days=i)).replace(hour=12, minute=0, second=0)
+        if sample_dt <= target_dt:
+            continue
+        d_iso = sample_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        closed_after_q = (
+            f"repo:{TARGET_PR_OWNER}/{TARGET_PR_REPO} "
+            f"is:pr is:closed "
+            f'label:"{TARGET_PR_LABEL}" '
+            f"created:<{TARGET_PR_CREATED_AT} "
+            f"closed:>{d_iso}"
+        )
+        params = urllib.parse.urlencode({"q": closed_after_q, "per_page": "1"})
+        try:
+            data = _http_get_json(f"https://api.github.com/search/issues?{params}")
+            closed_after_count = int(data.get("total_count", 0)) if isinstance(data, dict) else 0
+        except Exception as exc:  # noqa: BLE001
+            log.warning("backfill: query for %s failed: %s", d_iso, exc)
+            continue
+        ahead = still_open_count + closed_after_count
+        sample = Sample(
+            ts_unix=int(sample_dt.timestamp()),
+            ahead=ahead,
+            pr_state="open",  # by definition not yet merged at this past instant
+        )
+        _append_sample(jsonl_path, sample)
+        appended += 1
+        log.info("backfill: %s ahead=%d (still_open=%d + closed_after=%d)",
+                 d_iso, ahead, still_open_count, closed_after_count)
+    return appended
 
 
 def get_snapshot() -> HacsPrSnapshot:
