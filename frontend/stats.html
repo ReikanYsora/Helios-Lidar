@@ -72,11 +72,23 @@
     <!--  Headline composite signal: how is the app growing? Built
           from a weighted daily sum (unique visitors + 5*conversions
           + 10*downloads), smoothed with a 7-day EMA, then fit with
-          a least-squares trend line. The two KPI chips on the right
-          read the week-over-week and month-over-month deltas.   -->
+          a least-squares trend line. The KPI chips read the week-
+          over-week / month-over-month / slope-per-day deltas computed
+          over the full 365-day window regardless of the visible range
+          (so they always describe the structural trend, not just
+          what's currently zoomed in). The time-window tabs slice the
+          chart client-side to surface readable recent shapes without
+          the leading mostly-zero months crushing recent activity
+          against the right edge.                                      -->
     <section class="card stats-histogram" data-hist="growth">
       <header class="histogram-header">
         <h2>Application growth index</h2>
+        <div class="histogram-tabs" role="tablist" aria-label="Time range">
+          <button type="button" class="hist-tab"           data-range="7d"  role="tab" aria-selected="false">7 days</button>
+          <button type="button" class="hist-tab is-active" data-range="30d" role="tab" aria-selected="true">30 days</button>
+          <button type="button" class="hist-tab"           data-range="90d" role="tab" aria-selected="false">90 days</button>
+          <button type="button" class="hist-tab"           data-range="1y"  role="tab" aria-selected="false">1 year</button>
+        </div>
         <div id="growth-kpis" class="growth-kpis" aria-live="polite">
           <span class="growth-kpi" id="growth-kpi-wow">WoW —</span>
           <span class="growth-kpi" id="growth-kpi-mom">MoM —</span>

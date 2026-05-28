@@ -330,8 +330,16 @@ const histograms = {
         '24h': 'server_hourly_24h', '7d': 'server_daily_7d',
         '30d': 'server_daily_30d',  '1y': 'server_daily_1y',
     }, accent: () => readCssVar('--accent', '#f5a623') },
-    growth:        { chart: null, range: '1y', src: {
-        '1y': 'growth_index_1y',
+    //Growth index uses a single server-side payload (365 days of raw / EMA /
+    //trend) and the renderer slices it client-side to honour the selected
+    //range. Default is 30 days because that's the readable window during the
+    //first month of tracking, before the EMA has stabilised over a full
+    //comparable baseline.
+    growth:        { chart: null, range: '30d', src: {
+        '7d':  'growth_index_1y',
+        '30d': 'growth_index_1y',
+        '90d': 'growth_index_1y',
+        '1y':  'growth_index_1y',
     }, accent: () => readCssVar('--accent', '#f5a623') },
 };
 
@@ -382,7 +390,19 @@ function applyHistogram(name)
     }
     else if (name === 'growth')
     {
-        h.chart = renderGrowthIndex(`chart-histogram-${name}`, data || {labels: [], raw: [], ema: [], trend: []});
+        //Slice the 365-day server payload to the selected range. The KPIs (WoW
+        /// MoM / slope) always read from the full payload so they keep
+        //describing the structural trend over the long horizon, even when the
+        //chart is zoomed to 7 days.
+        const rangeDays = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 }[h.range] || 30;
+        const sliceTail = (a) => Array.isArray(a) ? a.slice(-rangeDays) : [];
+        const view = data ? {
+            labels: sliceTail(data.labels),
+            raw:    sliceTail(data.raw),
+            ema:    sliceTail(data.ema),
+            trend:  sliceTail(data.trend),
+        } : { labels: [], raw: [], ema: [], trend: [] };
+        h.chart = renderGrowthIndex(`chart-histogram-${name}`, view);
         renderGrowthKpis(data || {});
     }
     else
