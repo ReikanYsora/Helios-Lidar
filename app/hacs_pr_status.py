@@ -27,6 +27,7 @@ import logging
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import NamedTuple
@@ -93,14 +94,20 @@ def _count_prs_ahead() -> int:
     """One Search API call. `created:<TARGET_PR_CREATED_AT` filters
     to PRs strictly older than ours, the open + label filters keep us
     on the same FIFO queue. Returns the total count GitHub reports.
+
+    Query terms are separated by spaces in the GitHub Search syntax,
+    `urllib.parse.urlencode` then turns the whole string into the
+    URL-safe form (spaces → +, quotes → %22, < → %3C, etc.) so the
+    Request doesn't choke.
     """
     q = (
-        f"repo:{TARGET_PR_OWNER}/{TARGET_PR_REPO}"
-        f"+is:pr+is:open"
-        f'+label:"{TARGET_PR_LABEL}"'
-        f"+created:<{TARGET_PR_CREATED_AT}"
+        f"repo:{TARGET_PR_OWNER}/{TARGET_PR_REPO} "
+        f"is:pr is:open "
+        f'label:"{TARGET_PR_LABEL}" '
+        f"created:<{TARGET_PR_CREATED_AT}"
     )
-    url = f"https://api.github.com/search/issues?q={q}&per_page=1"
+    params = urllib.parse.urlencode({"q": q, "per_page": "1"})
+    url = f"https://api.github.com/search/issues?{params}"
     data = _http_get_json(url)
     if not isinstance(data, dict):
         raise ValueError("unexpected search payload")
@@ -198,7 +205,7 @@ def _sampler_loop(path: Path) -> None:
                         samples=_cache.samples,
                         fetched_at_unix=time.time(),
                     )
-        except (urllib.error.URLError, ValueError) as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("hacs_pr_status: hourly sample failed: %s", exc)
 
 
