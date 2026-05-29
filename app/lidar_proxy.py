@@ -24,6 +24,7 @@ upstream URL, the server just trusts it after the hostname check.
 from __future__ import annotations
 
 import logging
+import socket
 from urllib.parse import urlparse
 
 import urllib.error
@@ -98,6 +99,15 @@ def fetch_upstream(upstream_url: str) -> Response:
     except urllib.error.HTTPError as exc:
         log.warning("lidar_proxy: upstream %s returned HTTP %d", host, exc.code)
         raise HTTPException(status_code=502, detail=f"upstream returned {exc.code}") from exc
+    except (TimeoutError, socket.timeout) as exc:
+        #Python 3.10+ raises the builtin TimeoutError on socket read
+        #timeout instead of wrapping it inside urllib.error.URLError,
+        #so the catch below misses it and the request bubbles up as a
+        #500 with the full Starlette stack in the journal. Surface a
+        #clean 504 so the card's backoff treats the timeout the same
+        #as any other upstream-unreachable case.
+        log.warning("lidar_proxy: upstream %s read timed out after %ds", host, UPSTREAM_TIMEOUT_SECONDS)
+        raise HTTPException(status_code=504, detail="upstream timed out") from exc
     except urllib.error.URLError as exc:
         log.warning("lidar_proxy: upstream %s unreachable: %s", host, exc)
         raise HTTPException(status_code=504, detail="upstream unreachable") from exc

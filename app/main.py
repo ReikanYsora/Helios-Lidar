@@ -19,6 +19,8 @@ from __future__ import annotations
 import json
 import logging
 import shutil
+import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -36,7 +38,7 @@ from app.config import settings
 from app.jobs import Job, JobStatus
 from app.stats import StatsStore
 from pipeline import cog as cog_mod
-from pipeline import dsm_to_ndsm, laz_to_ndsm, yaml_snippet
+from pipeline import dsm_to_ndsm, yaml_snippet
 from pipeline.validate import ValidationError, inspect, validate_pair
 
 log = logging.getLogger("helios-lidar")
@@ -539,47 +541,43 @@ def _process(job_id: str, client_ip: str | None = None) -> None:
             job.progress_pct = 25
             job.save()
 
-            #Map the laz_to_ndsm internal phases to the 25 -> 75 %
-            #band reserved for PROCESSING. Each phase covers a slice
-            #of that band; the fraction reported by the pipeline
-            #drives the bar inside its slice. Saving on every call
-            #would hammer the disk, throttle to ~ once a second.
-            phase_band = {
-                "reading":      (25, 33),
-                "reprojecting": (33, 40),
-                "kdtree":       (40, 43),
-                "querying":     (43, 70),
-                "rasterising":  (70, 73),
-                "writing":      (73, 75),
-            }
-            phase_msg = {
-                "reading":      "Reading points",
-                "reprojecting": "Reprojecting to metres",
-                "kdtree":       "Building ground KDTree",
-                "querying":     "Computing height-above-ground",
-                "rasterising":  "Building the nDSM raster",
-                "writing":      "Writing nDSM to disk",
-            }
-            last_save = [0.0]
-
-            def _laz_progress(phase: str, fraction: float) -> None:
-                lo, hi = phase_band.get(phase, (25, 75))
-                pct = lo + (hi - lo) * max(0.0, min(1.0, fraction))
-                job.progress_pct = pct
-                job.progress_message = phase_msg.get(phase, "Processing")
-                now = time.monotonic()
-                if now - last_save[0] >= 0.8 or fraction >= 1.0:
-                    job.save()
-                    last_save[0] = now
-
-            laz_to_ndsm.rasterise(
-                laz_path,
-                ndsm_path,
-                pixel_meters=settings.raster_pixel_meters,
-                on_progress=_laz_progress,
+            #Run the LAZ -> nDSM pipeline in a child Python process so
+            #the heavy point-cloud allocations live and die inside it.
+            #A 50M-point LAZ peaks ~ 3 GB of RSS; running it in-process
+            #left glibc holding onto the freed pages and the worker
+            #stayed at the high-water mark for the rest of the day,
+            #stacking conversions until it tipped into swap and the
+            #service stopped answering. The child process exits, the
+            #kernel reclaims everything, the parent stays small.
+            #
+            #Progress reaches /jobs/{id} through status.json: the child
+            #updates it on every phase boundary and the polling
+            #endpoint reads the file fresh on every request, no
+            #parent-child IPC needed.
+            result = subprocess.run(
+                [sys.executable, "-m", "app.pipeline_runner", job_id],
+                timeout=1800,
+                check=False,
+                capture_output=True,
+                text=True,
             )
+            if result.returncode != 0:
+                stderr = (result.stderr or "").strip()
+                if result.returncode == 10 and stderr.startswith("VALIDATION_ERROR: "):
+                    raise ValidationError(stderr[len("VALIDATION_ERROR: "):])
+                tail = stderr.splitlines()[-1] if stderr else f"exit {result.returncode}"
+                raise ValidationError(f"LAZ pipeline failed: {tail}")
 
-            #Inspect the result we just wrote so we have the same
+            #Reload the job so the progress fields the child wrote
+            #through status.json are reflected in the local instance,
+            #otherwise the next .save() below would overwrite them
+            #with the parent's stale 25 % snapshot.
+            refreshed = Job.load(job_id)
+            if refreshed is not None:
+                job.progress_pct     = refreshed.progress_pct
+                job.progress_message = refreshed.progress_message
+
+            #Inspect the result the child wrote so we have the same
             #bounds_wgs84 + pixel + EPSG metadata the raster path
             #produces upstream.
             ndsm_meta = inspect(ndsm_path)
