@@ -23,7 +23,7 @@ proof the source actually feeds the pipeline.
   (pick a 1 km² tile, choose "Original (LAS / LAZ)", and feed the
   resulting `.copc.laz` URL into helios-lidar.org).
 * **Netherlands**, [AHN](https://www.ahn.nl/).
-* **Spain**, [IGN PNOA-LiDAR](https://centrodedescargas.cnig.es/CentroDescargas/buscador-de-productos?productoCNIG=LIDAR).
+* **Spain**, [IGN PNOA-LiDAR](https://centrodedescargas.cnig.es/CentroDescargas/buscar-mapa?codSerie=LIDA3&codAgr=MOMDT).
 * **Portugal**, [DGT Geospatial Data Viewer](https://cdd.dgterritorio.gov.pt/dgt-fe/mapa?collection=LAZ&language=en).
   Free registration required on the portal before download. Smallest LAZ tile is around 130 MB.
   Source: @Nanianmichaels on the Helios HA community thread.
